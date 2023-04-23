@@ -20,44 +20,57 @@ namespace Galaga
 {
     public class GamePlayView : GameStateView
     {
-
+        
         private bool saving = false;
-
         private bool m_wait;
-        private Texture2D m_bulletTex;
-        private double gameOverTime;
         private bool m_pause;
-        private int bulletsFired;
-        bool newGame = true;
+        bool newGame;
         bool m_quit;
-        private List<Rectangle> bullets;
+        private bool m_gameOver;
+        private bool m_waitforkey;
+        private int m_selection;
+
+
+        private const int Wall_THICKNESS = 30;
+        private int m_lives;
+        private int bulletsFired;
         private int bulletWidth;
         private float bulletSpeed = 900.0f / 1000.0f;
-        ContentManager m_contentManager;
-        private SpriteFont m_font;
-        private Texture2D m_squareTexture;
-        ParticleEmitter m_emitter1;
-        private double m_score;
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
-        private const int Wall_THICKNESS = 30;
-        private KeyboardInput m_inputKeyboard;
-        private bool m_gameOver;
+
+        private double gameOverTime;
+        private double m_score;
+
+        private SpriteFont m_font;
+        private SpriteFont m_fontMenu;
+        private SpriteFont m_fontMenuSelect;
+
+        private ContentManager m_contentManager;
+        private ParticleEmitter m_emitter1;
+        
+        private List<Rectangle> bullets;
+        private List<Rectangle> deleteBullets;
+        private List<Enemy> enemies;
+        private List<Enemy> deleteEnemies;
+
         Rectangle m_player;
         Rectangle leftWall;
         Rectangle rightWall;
+
+        private KeyboardInput m_inputKeyboard;
+        private Texture2D m_bulletTex;
+        private Texture2D m_squareTexture;
         private Texture2D m_background;
         private Texture2D m_playerTex;
+        private Texture2D m_bee;
+        private Texture2D m_boss;
+        private Texture2D m_butterfly;
 
         private string[] PauseState =
         {
             "Resume",
             "Exit",
         };
-        private SpriteFont m_fontMenu;
-        private SpriteFont m_fontMenuSelect;
-        private int m_selection;
-        private bool m_waitforkey;
-
         
         public void initializeNewGameState()
         {
@@ -67,29 +80,44 @@ namespace Galaga
             m_inputKeyboard.registerCommand(Keys.Right, false, new InputDeviceHelper.CommandDelegate(onMoveRight));
             m_inputKeyboard.registerCommand(Keys.Escape, false, new InputDeviceHelper.CommandDelegate(onEscape));
             m_inputKeyboard.registerCommand(Keys.Space, true, new InputDeviceHelper.CommandDelegate(onSpace));
+
+            //Bullets, Enemies, Player
             bullets = new List<Rectangle>();
+            deleteBullets = new List<Rectangle>();
             bulletWidth = 10;
+            bulletsFired = 0;
+
+            enemies = new List<Enemy>();
+            deleteEnemies= new List<Enemy>();
+
+            //Test Delete Later
+            enemies.Add(new Enemy(m_bee, 1, new Rectangle(600, 200, 30, 30)));
+            enemies.Add(new Enemy(m_boss, 1, new Rectangle(700, 200, 30, 30)));
+            enemies.Add(new Enemy(m_bee, 1, new Rectangle(800, 200, 30, 30)));
+            enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(1000, 200, 30, 30)));
+
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, 30, 30);
+            m_lives = 3;
+
             gameOverTime = 5;
-            newGame = true;
-            m_waitforkey = false;
             m_selection = 0;
             m_score = 0;
+            
+
+            //Bools
+            newGame = true;
+            m_waitforkey = false;
             m_pause = false;
             m_quit = false;
-            bulletsFired = 0;
             m_gameOver = false;
+
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 300, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(270, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
-
-
-
-            Random rand = new Random();
-
 
         }
         public override void loadContent(ContentManager contentManager)
         {
+            initializeNewGameState();
             m_contentManager = contentManager;
             m_background = contentManager.Load<Texture2D>("Images/background");
             m_font = contentManager.Load<SpriteFont>("Fonts/menu");
@@ -98,6 +126,9 @@ namespace Galaga
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
             m_playerTex = contentManager.Load<Texture2D>("Images/Player");
             m_bulletTex = contentManager.Load<Texture2D>("Images/bullet");
+            m_bee = contentManager.Load<Texture2D>("Images/bee");
+            m_boss = contentManager.Load<Texture2D>("Images/boss");
+            m_butterfly = contentManager.Load<Texture2D>("Images/butterfly");
             
         }
 
@@ -126,17 +157,18 @@ namespace Galaga
             m_spriteBatch.Draw(m_background, new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight), Color.White);
             if (!m_quit)
             {
-               
+                drawLives();
                 if (m_pause)
                 {
                     renderMenu();
                 }
                 else
                 {
-
                     drawScore();
                     m_spriteBatch.Draw(m_playerTex, m_player, Color.White);
                     drawBullets();
+
+                    drawEnemies();
 
 
                     if (m_gameOver)
@@ -151,10 +183,8 @@ namespace Galaga
                     }
 
                 }
-
             }
             m_spriteBatch.End();
-
         }
 
         public override void update(GameTime gameTime)
@@ -168,11 +198,8 @@ namespace Galaga
             {
                     if (!m_gameOver)
                     {
-                       
                         m_inputKeyboard.Update(gameTime);
-                        m_score += gameTime.ElapsedGameTime.Milliseconds;
-
-
+                        
 
                     //Update Each bullet Position
                     for (int i = 0; i < bullets.Count; i ++)
@@ -182,22 +209,46 @@ namespace Galaga
                     }
 
                     //Delete Any bullets off Screen
-                    List<Rectangle> newBullets = new List<Rectangle>();
+                    
                     for (int i = 0; i < bullets.Count; i++)
                     {
-                        if (bullets[i].Y > 0)
+                        if (bullets[i].Y < 0)
                         {
-                            newBullets.Add(bullets[i]);
+                            deleteBullets.Add(bullets[i]);
                         }
                         
                     }
+                    
 
-                    bullets = newBullets;
+                    //Check Bullet Collisions
+                    checkBulletCollisions();
+                    checkEnemyLives();
 
+                    //Clean Up Dead Enemies and Off screen Bullets
+
+                    if(deleteBullets.Count > 0)
+                    {
+                        foreach (Rectangle bullet in deleteBullets)
+                        {
+                            bullets.Remove(bullet);
+                        }
+
+                        deleteBullets.Clear();
+                    }
+
+                    if(deleteEnemies.Count > 0 )
+                    {
+                        foreach (Enemy enemy in deleteEnemies)
+                        {
+                            enemies.Remove(enemy);
+                        }
+
+                        deleteEnemies.Clear();
+                    }
 
                 } else
                     {
-                        
+                        //Death
                         m_emitter1.update(gameTime);
                         gameOverTime -= gameTime.ElapsedGameTime.TotalSeconds;
                     }
@@ -208,18 +259,60 @@ namespace Galaga
             }
         }
 
-        
+        private void checkBulletCollisions()
+        {
+            
+            //Check Collisions for each bullet and each Enemy
+            if (bullets.Count > 0 && enemies.Count > 0)
+            {
+                foreach (Rectangle bullet in bullets)
+                {
+                    foreach (Enemy enemy in enemies)
+                    {
+                        if (intersect(enemy.rectangle, bullet))
+                        {
+                            deleteBullets.Add(bullet);
+                            enemy.lives -= 1;
+
+                        } 
+                    }
+                }
+               
+            }
+            
+        }
+        private void checkEnemyLives()
+        {
+            
+            foreach(Enemy enemy in enemies)
+            {
+                if(enemy.lives <= 0)
+                {
+                    deleteEnemies.Add(enemy);
+                    if(enemy.enemyTexture == m_bee)
+                    {
+                        m_score += 50;
+                    } else if (enemy.enemyTexture == m_boss)
+                    {
+                        m_score += 150;
+                    } else if (enemy.enemyTexture == m_butterfly)
+                    {
+                        m_score += 80;
+                    }
+                }
+            }
+        }
         private void drawScore()
         {
             Vector2 stringSize = m_font.MeasureString("Score " + m_score.ToString());
             m_spriteBatch.DrawString(
                m_font,
-                "Score " + (m_score / 1000).ToString(),
+                "Score " + (m_score).ToString(),
                new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, 10),
                Color.Red);
 
 
-            stringSize = m_font.MeasureString("Bullets Fired: " + m_score.ToString());
+            stringSize = m_font.MeasureString("Bullets Fired: " + bulletsFired.ToString());
             m_spriteBatch.DrawString(
                m_font,
                 "Bullets Fired: " + (bulletsFired).ToString(),
@@ -297,8 +390,27 @@ namespace Galaga
 
             return y + stringSize.Y;
         }
+        private void drawLives()
+        {
+            for (int i = 0; i < m_lives; i++)
+            {
+                m_spriteBatch.Draw(m_playerTex, new Rectangle(Wall_THICKNESS + 50 * i, m_graphics.PreferredBackBufferHeight - 100, 30, 30), Color.White);
+            }
 
+        }
 
+        private void drawEnemies()
+        {
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, Color.White);
+            }
+        }
+        private void updateEnemies()
+        {
+
+            //Do Something
+        }
         private void renderMenu()
         {
             Vector2 stringSize = m_font.MeasureString("Game Paused");
@@ -362,6 +474,21 @@ namespace Galaga
 
         }
 
+        class Enemy
+        {
+
+            public Texture2D enemyTexture;
+            public int lives;
+            public Rectangle rectangle;
+
+            public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle)
+            {
+                this.enemyTexture = enemyTexture;
+                this.lives = lives;
+                this.rectangle = rectangle;
+            }
+        }
+
         private void saveScore()
         {
             lock (this)
@@ -371,7 +498,7 @@ namespace Galaga
                     this.saving = true;
                     //
                     // Create something to save
-                    Scoring myState = new Scoring((int)m_score/1000);
+                    Scoring myState = new Scoring((int)m_score);
                     finalizeSaveAsync(myState);
                 }
             }
