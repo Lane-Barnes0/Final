@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using System;
 using System.Reflection.Metadata;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Galaga
 {
@@ -23,20 +24,21 @@ namespace Galaga
         private bool saving = false;
 
         private bool m_wait;
-       
+        private Texture2D m_bulletTex;
         private double gameOverTime;
-        
-       
         private bool m_pause;
+        private int bulletsFired;
         bool newGame = true;
         bool m_quit;
-      
+        private List<Rectangle> bullets;
+        private int bulletWidth;
+        private float bulletSpeed = 900.0f / 1000.0f;
         ContentManager m_contentManager;
         private SpriteFont m_font;
         private Texture2D m_squareTexture;
         ParticleEmitter m_emitter1;
         private double m_score;
-        private const float SPRITE_MOVE_PIXELS_PER_MS = 900.0f / 1000.0f;
+        private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
         private const int Wall_THICKNESS = 30;
         private KeyboardInput m_inputKeyboard;
         private bool m_gameOver;
@@ -65,6 +67,8 @@ namespace Galaga
             m_inputKeyboard.registerCommand(Keys.Right, false, new InputDeviceHelper.CommandDelegate(onMoveRight));
             m_inputKeyboard.registerCommand(Keys.Escape, false, new InputDeviceHelper.CommandDelegate(onEscape));
             m_inputKeyboard.registerCommand(Keys.Space, true, new InputDeviceHelper.CommandDelegate(onSpace));
+            bullets = new List<Rectangle>();
+            bulletWidth = 10;
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, 30, 30);
             gameOverTime = 5;
             newGame = true;
@@ -73,7 +77,7 @@ namespace Galaga
             m_score = 0;
             m_pause = false;
             m_quit = false;
-
+            bulletsFired = 0;
             m_gameOver = false;
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 300, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(270, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
@@ -93,6 +97,7 @@ namespace Galaga
             m_fontMenu = contentManager.Load<SpriteFont>("Fonts/menu");
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
             m_playerTex = contentManager.Load<Texture2D>("Images/Player");
+            m_bulletTex = contentManager.Load<Texture2D>("Images/bullet");
             
         }
 
@@ -131,7 +136,7 @@ namespace Galaga
 
                     drawScore();
                     m_spriteBatch.Draw(m_playerTex, m_player, Color.White);
-
+                    drawBullets();
 
 
                     if (m_gameOver)
@@ -166,7 +171,31 @@ namespace Galaga
                        
                         m_inputKeyboard.Update(gameTime);
                         m_score += gameTime.ElapsedGameTime.Milliseconds;
-                    } else
+
+
+
+                    //Update Each bullet Position
+                    for (int i = 0; i < bullets.Count; i ++)
+                    {
+                        int moveDistance = (int)(gameTime.ElapsedGameTime.TotalMilliseconds * bulletSpeed);
+                        bullets[i] = new Rectangle(bullets[i].X, bullets[i].Y - moveDistance, bulletWidth, bulletWidth);
+                    }
+
+                    //Delete Any bullets off Screen
+                    List<Rectangle> newBullets = new List<Rectangle>();
+                    for (int i = 0; i < bullets.Count; i++)
+                    {
+                        if (bullets[i].Y > 0)
+                        {
+                            newBullets.Add(bullets[i]);
+                        }
+                        
+                    }
+
+                    bullets = newBullets;
+
+
+                } else
                     {
                         
                         m_emitter1.update(gameTime);
@@ -182,13 +211,21 @@ namespace Galaga
         
         private void drawScore()
         {
-            Vector2 stringSize = m_font.MeasureString("Time " + m_score.ToString());
+            Vector2 stringSize = m_font.MeasureString("Score " + m_score.ToString());
             m_spriteBatch.DrawString(
                m_font,
-                "Time " + (m_score / 1000).ToString(),
-               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X - 100, m_graphics.PreferredBackBufferHeight - 100),
+                "Score " + (m_score / 1000).ToString(),
+               new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, 10),
+               Color.Red);
+
+
+            stringSize = m_font.MeasureString("Bullets Fired: " + m_score.ToString());
+            m_spriteBatch.DrawString(
+               m_font,
+                "Bullets Fired: " + (bulletsFired).ToString(),
+               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 100),
                Color.Yellow);
-  
+
         }
 
         private void onMoveLeft(GameTime gameTime, float scale)
@@ -223,8 +260,17 @@ namespace Galaga
         private void onSpace(GameTime gameTime, float scale)
         {
             //Fire Bullets 
+            bullets.Add(new Rectangle(m_player.Center.X - bulletWidth/2, m_player.Y - 5, bulletWidth, bulletWidth));
+            bulletsFired += 1;
 
-            
+        }
+
+        private void drawBullets()
+        {
+            foreach(Rectangle bullet in bullets)
+            {
+                m_spriteBatch.Draw(m_bulletTex, bullet, Color.White);
+            }
 
         }
         private bool intersect(Rectangle r1, Rectangle r2)
