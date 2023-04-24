@@ -40,7 +40,7 @@ namespace Galaga
         private int bulletWidth;
         private float bulletSpeed = 700.0f / 1000.0f;
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
-        private float enemySpeed;
+        
 
         private double gameOverTime;
         private double m_score;
@@ -60,6 +60,7 @@ namespace Galaga
         private List<Enemy> deleteEnemies;
 
         private int[,] topBeesPath;
+        private int[,] topButterflyPath;
 
         Rectangle m_player;
         Rectangle leftWall;
@@ -114,7 +115,16 @@ namespace Galaga
             {900, 500},
           
             };
-            
+
+            topButterflyPath = new int[,]
+            {
+
+            {900, 0},
+            {1350, 500},
+            {1050, 800 },
+            {900, 450},
+
+            };
 
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, CHARACTER_SIZE, CHARACTER_SIZE);
             m_lives = 3;
@@ -124,8 +134,8 @@ namespace Galaga
             m_score = 0;
             moreEnemies = 1;
             currentWave = 1;
-            nextWave = 6;
-            enemySpeed = SPRITE_MOVE_PIXELS_PER_MS / 2;
+            nextWave = 2.5;
+            
 
             //Bools
             newGame = true;
@@ -175,7 +185,7 @@ namespace Galaga
             if (enemy.pathIndex < path.GetLength(0) - 1)
             {
                 // Compute distance traveled
-                double distTraveled =  enemySpeed * elapsedTime.ElapsedGameTime.TotalMilliseconds;
+                double distTraveled =  enemy.speed * elapsedTime.ElapsedGameTime.TotalMilliseconds;
 
                 // Compute remaining distance on the current line segment
                 double distRemaining = computeDistance(enemy.rectangle.X, enemy.rectangle.Y, path[enemy.pathIndex + 1, 0], path[enemy.pathIndex + 1, 1]);
@@ -542,13 +552,14 @@ namespace Galaga
             foreach (Enemy enemy in enemies)
             {
                 
-                if(enemy.pathIndex < topBeesPath.GetLength(0) - 1)
+                if(enemy.pathIndex < enemy.path.GetLength(0) - 1)
                 {
-                    updateEnemyPath(enemy, gameTime, topBeesPath);
+                    updateEnemyPath(enemy, gameTime, enemy.path);
                 } else
                 {
+                    enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 4;
                     enemy.rotation = 0;
-                    double distTraveled = enemy.directionX * enemySpeed * gameTime.ElapsedGameTime.TotalMilliseconds;
+                    double distTraveled = enemy.directionX * enemy.speed * gameTime.ElapsedGameTime.TotalMilliseconds;
                     if (intersect(leftWall, enemy.rectangle) || intersect(rightWall, enemy.rectangle))
                     {
 
@@ -572,15 +583,14 @@ namespace Galaga
             nextWave -= gameTime.ElapsedGameTime.TotalSeconds;
             if (moreEnemies < 0)
             {
-                moreEnemies = 0.45;
+                moreEnemies = 0.35;
                 
                 //First Wave, Second Wave, Challenge Wave
                 if (wave == 1)
                 {
-                    if (enemies.Count < 10)
-                    {
-                        firstEnemyWave();
-                    }
+                    
+                firstEnemyWave();
+                    
                     
                 }
                 else if (wave == 2)
@@ -615,17 +625,17 @@ namespace Galaga
         private void firstEnemyWave()
         {
             
-         enemies.Add(new Enemy(m_bee, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE)));
-     
-            
+         enemies.Add(new Enemy(m_bee, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topBeesPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+         enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topButterflyPath[0, 0], topButterflyPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topButterflyPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+
         }
         private void secondEnemyWave()
         {
-            enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE)));
+            
         }
         private void challengeWave()
         {
-            enemies.Add(new Enemy(m_boss, 2, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE)));
+            
         }
         private void renderMenu()
         {
@@ -700,13 +710,17 @@ namespace Galaga
             public int directionY;
             public int pathIndex = 0;
             public double rotation = 0;
-            public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle)
+            public int[,] path;
+            public double speed;
+            public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle, int[,] path, double speed)
             {
                 this.enemyTexture = enemyTexture;
                 this.lives = lives;
                 this.rectangle = rectangle;
                 directionX = 1;
                 directionY = 1;
+                this.path = path;
+                this.speed = speed;
             }
         }
 
