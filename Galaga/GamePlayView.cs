@@ -29,9 +29,10 @@ namespace Galaga
         private bool m_gameOver;
         private bool m_waitforkey;
         private int m_selection;
-
+        
 
         private const int Wall_THICKNESS = 30;
+        private int currentWave;
         private int m_lives;
         private int bulletsFired;
         private int bulletWidth;
@@ -40,6 +41,7 @@ namespace Galaga
 
         private double gameOverTime;
         private double m_score;
+        private double moreEnemies;
 
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
@@ -52,6 +54,8 @@ namespace Galaga
         private List<Rectangle> deleteBullets;
         private List<Enemy> enemies;
         private List<Enemy> deleteEnemies;
+
+        private int[,] topBeesPath;
 
         Rectangle m_player;
         Rectangle leftWall;
@@ -89,10 +93,26 @@ namespace Galaga
 
             enemies = new List<Enemy>();
             deleteEnemies= new List<Enemy>();
+            topBeesPath = new int[,]
+            {
 
+            {500, 650},
+            { 550,  618},
+            { 587,  550},
+            { 587,  450},
+            { 550,  382},
+            { 500,  350},
+            { 450,  382},
+            { 413,  450},
+            { 413,  550},
+            { 450,  618},
+            { 500,50}
+
+            };
+            
             //Test Delete Later
             enemies.Add(new Enemy(m_bee, 1, new Rectangle(600, 200, 30, 30)));
-            enemies.Add(new Enemy(m_boss, 1, new Rectangle(700, 200, 30, 30)));
+            enemies.Add(new Enemy(m_boss, 2, new Rectangle(700, 200, 30, 30)));
             enemies.Add(new Enemy(m_bee, 1, new Rectangle(800, 200, 30, 30)));
             enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(1000, 200, 30, 30)));
 
@@ -102,7 +122,8 @@ namespace Galaga
             gameOverTime = 5;
             m_selection = 0;
             m_score = 0;
-            
+            moreEnemies = 5;
+            currentWave = 1;
 
             //Bools
             newGame = true;
@@ -114,6 +135,14 @@ namespace Galaga
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 300, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(270, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
 
+        }
+        public double computeDistance(int pt1x, int pt1y, int pt2x, int pt2y)
+        {
+            
+            double dx2 = Math.Pow(pt2x - pt1x, 2);
+            double dy2 = Math.Pow(pt2y - pt1y, 2);
+
+            return Math.Sqrt(dx2 + dy2);
         }
         public override void loadContent(ContentManager contentManager)
         {
@@ -198,8 +227,23 @@ namespace Galaga
             {
                     if (!m_gameOver)
                     {
-                        m_inputKeyboard.Update(gameTime);
+                    m_inputKeyboard.Update(gameTime);
+                    moreEnemies -= gameTime.ElapsedGameTime.TotalSeconds;
+                    if(moreEnemies < 0)
+                    {
+                        moreEnemies = 5;
+                        generateEnemies(currentWave);
+                        currentWave += 1;
+                        if(currentWave > 3)
+                        {
+                            currentWave = 1;
+                        }
+                    }
                         
+
+                    //Update Enemies
+                    updateEnemies(gameTime);
+
 
                     //Update Each bullet Position
                     for (int i = 0; i < bullets.Count; i ++)
@@ -302,6 +346,8 @@ namespace Galaga
                 }
             }
         }
+
+        
         private void drawScore()
         {
             Vector2 stringSize = m_font.MeasureString("Score " + m_score.ToString());
@@ -403,13 +449,62 @@ namespace Galaga
         {
             for (int i = 0; i < enemies.Count; i++)
             {
-                m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, Color.White);
+                if (enemies[i].enemyTexture == m_boss && enemies[i].lives == 1) {
+                    m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, Color.Blue);
+                } else
+                {
+                    m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, Color.White);
+                }
+                
             }
         }
-        private void updateEnemies()
+        private void updateEnemies(GameTime gameTime)
+        {
+            foreach (Enemy enemy in enemies)
+            {
+                int moveDistanceX = (int)(enemy.directionX * gameTime.ElapsedGameTime.TotalMilliseconds * SPRITE_MOVE_PIXELS_PER_MS) / 2;
+                
+                if (intersect(leftWall, enemy.rectangle) || intersect(rightWall, enemy.rectangle))
+                {
+                    
+                    enemy.directionX *= -1;
+                    enemy.rectangle = new Rectangle(enemy.rectangle.X - moveDistanceX, (enemy.rectangle.Y), 30, 30);
+                } else
+                {
+                    enemy.rectangle = new Rectangle(enemy.rectangle.X + moveDistanceX, (enemy.rectangle.Y), 30, 30);
+                }
+            }
+        }
+
+
+        private void generateEnemies(int wave)
+        {
+            //First Wave, Second Wave, Challenge Wave
+            if (wave == 1)
+            {
+                firstEnemyWave();
+            } else if (wave == 2)
+            {
+                secondEnemyWave();
+            } else if (wave == 3)
+            {
+                challengeWave();
+            }
+        }
+        private void firstEnemyWave()
+        {
+            enemies.Add(new Enemy(m_bee, 1, new Rectangle(600, 200, 30, 30)));
+            enemies.Add(new Enemy(m_boss, 2, new Rectangle(700, 200, 30, 30)));
+            enemies.Add(new Enemy(m_bee, 1, new Rectangle(800, 200, 30, 30)));
+            enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(1000, 200, 30, 30)));
+        }
+        private void secondEnemyWave()
         {
 
-            //Do Something
+        }
+        private void challengeWave()
+        {
+
         }
         private void renderMenu()
         {
@@ -480,12 +575,15 @@ namespace Galaga
             public Texture2D enemyTexture;
             public int lives;
             public Rectangle rectangle;
-
+            public int directionX;
+            public int directionY;
             public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle)
             {
                 this.enemyTexture = enemyTexture;
                 this.lives = lives;
                 this.rectangle = rectangle;
+                directionX = 1;
+                directionY = 1;
             }
         }
 
