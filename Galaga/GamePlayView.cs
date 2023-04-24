@@ -56,6 +56,8 @@ namespace Galaga
         
         private List<Rectangle> bullets;
         private List<Rectangle> deleteBullets;
+        private List<Rectangle> enemyBullets;
+        private List<Rectangle> deleteEnemyBullets;
         private List<Enemy> enemies;
         private List<Enemy> deleteEnemies;
         private List<(int, int, int)> destroyedEnemyScores;
@@ -97,6 +99,8 @@ namespace Galaga
             //Bullets, Enemies, Player
             bullets = new List<Rectangle>();
             deleteBullets = new List<Rectangle>();
+            enemyBullets = new List<Rectangle>();
+            deleteEnemyBullets = new List<Rectangle>();
             bulletWidth = 10;
             bulletsFired = 0;
 
@@ -307,7 +311,7 @@ namespace Galaga
 
                     //Update Enemies
                     updateEnemies(gameTime);
-
+                    updateEnemyBullets(gameTime);
 
                     //Update Each bullet Position
                     for (int i = 0; i < bullets.Count; i ++)
@@ -344,7 +348,17 @@ namespace Galaga
                         deleteBullets.Clear();
                     }
 
-                    if(deleteEnemies.Count > 0 )
+                    if (deleteEnemyBullets.Count > 0)
+                    {
+                        foreach (Rectangle bullet in deleteEnemyBullets)
+                        {
+                            enemyBullets.Remove(bullet);
+                        }
+
+                        deleteEnemyBullets.Clear();
+                    }
+
+                    if (deleteEnemies.Count > 0 )
                     {
                         foreach (Enemy enemy in deleteEnemies)
                         {
@@ -377,21 +391,48 @@ namespace Galaga
         private void checkCollisions()
         {
             
-            //Check Collisions for each bullet and each Enemy
-            if (bullets.Count > 0 && enemies.Count > 0)
+            //Check Collisions for each bullet
+            if (bullets.Count > 0)
             {
                 foreach (Rectangle bullet in bullets)
                 {
-                    foreach (Enemy enemy in enemies)
+                    if (enemies.Count > 0)
                     {
-                        if (circleIntersect(enemy.rectangle, bullet))
+                        foreach (Enemy enemy in enemies)
                         {
-                            deleteBullets.Add(bullet);
-                            enemy.lives -= 1;
-                        } 
+                            if (circleIntersect(enemy.rectangle, bullet))
+                            {
+                                deleteBullets.Add(bullet);
+                                enemy.lives -= 1;
+                            }
+                        }
+
                     }
+                   
                 } 
             }
+
+            //Enemy Bullets and Player 
+
+            if(enemyBullets.Count > 0)
+            {
+                foreach(Rectangle bullet in enemyBullets)
+                {
+                    if(circleIntersect(bullet, m_player))
+                    {
+                        if (circleIntersect(m_player, bullet))
+                        {
+                            m_lives -= 1;
+                            deleteEnemyBullets.Add(bullet);
+                            if (m_lives == 0)
+                            {
+                                m_quit = true;
+                            }
+                        }
+                    }
+                }
+            }
+
             //Check Enemy and Player collision
             foreach (Enemy enemy in enemies)
             {
@@ -405,7 +446,9 @@ namespace Galaga
                         m_quit = true;
                     }
                 }
-            } 
+            }
+            
+            
         }
 
         private bool circleIntersect(Rectangle one, Rectangle two)
@@ -442,6 +485,27 @@ namespace Galaga
             }
         }
 
+        private void updateEnemyBullets(GameTime gameTime)
+        {
+
+            for (int i = 0; i < enemyBullets.Count; i++)
+            {
+                int moveDistance = (int)(gameTime.ElapsedGameTime.TotalMilliseconds * bulletSpeed / 2);
+                enemyBullets[i] = new Rectangle(enemyBullets[i].X, enemyBullets[i].Y + moveDistance, bulletWidth, bulletWidth);
+
+             
+               if (enemyBullets[i].Y > m_graphics.PreferredBackBufferHeight)
+               {
+                        deleteEnemyBullets.Add(enemyBullets[i]);
+               }
+
+            }
+
+            
+
+
+
+        }
         
         
         private void drawDestroyedEnemyScore()
@@ -523,6 +587,12 @@ namespace Galaga
                 m_spriteBatch.Draw(m_bulletTex, bullet, Color.White);
             }
 
+            foreach (Rectangle bullet in enemyBullets)
+            {
+                m_spriteBatch.Draw(m_bulletTex,bullet, null, Color.White, (float)(Math.PI), new Vector2(m_bulletTex.Width / 2, m_bulletTex.Height / 2),
+                    SpriteEffects.None, 0);
+            }
+
         }
         private bool intersect(Rectangle r1, Rectangle r2)
         {
@@ -587,6 +657,8 @@ namespace Galaga
                     updateEnemyPath(enemy, gameTime, enemy.path);
                 } else if (enemy.timeAlive > 15 )
                 {
+                    //Throw Bullet
+                    enemyBullets.Add(new Rectangle (enemy.rectangle.Center.X, enemy.rectangle.Center.Y, bulletWidth, bulletWidth));
                     //dive 
                     enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 2;
                     
