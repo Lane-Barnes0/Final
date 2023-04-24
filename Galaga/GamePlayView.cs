@@ -33,17 +33,19 @@ namespace Galaga
         
 
         private const int Wall_THICKNESS = 30;
+        private const int CHARACTER_SIZE = 30;
         private int currentWave;
         private int m_lives;
         private int bulletsFired;
         private int bulletWidth;
-        private float bulletSpeed = 900.0f / 1000.0f;
+        private float bulletSpeed = 700.0f / 1000.0f;
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
         private float enemySpeed;
 
         private double gameOverTime;
         private double m_score;
         private double moreEnemies;
+        private double nextWave;
 
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
@@ -95,37 +97,34 @@ namespace Galaga
 
             enemies = new List<Enemy>();
             deleteEnemies= new List<Enemy>();
+
+            int center = m_graphics.PreferredBackBufferWidth / 2;
             topBeesPath = new int[,]
             {
-
-            {500, 650},
-            { 550,  618},
-            { 587,  550},
-            { 587,  450},
-            { 550,  382},
-            { 500,  350},
-            { 450,  382},
-            { 413,  450},
-            { 413,  550},
-            { 450,  618},
-            { 500,50}
-
+            
+            /*
+             * Start Top Center Off right slightly
+             * Travel Down and Left
+             * Sop A little below half way and loop back up 
+             * stop around 1/3 height above middle
+             */
+            {1000, 0},
+            {500, 500},
+            {800, 800 },
+            {900, 500},
+          
             };
             
-            //Test Delete Later
-            enemies.Add(new Enemy(m_bee, 1, new Rectangle(600, 200, 30, 30)));
-            enemies.Add(new Enemy(m_boss, 2, new Rectangle(700, 200, 30, 30)));
-            enemies.Add(new Enemy(m_bee, 1, new Rectangle(800, 200, 30, 30)));
-            enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(1000, 200, 30, 30)));
 
-            m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, 30, 30);
+            m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, CHARACTER_SIZE, CHARACTER_SIZE);
             m_lives = 3;
 
             gameOverTime = 5;
             m_selection = 0;
             m_score = 0;
-            moreEnemies = 5;
+            moreEnemies = 1;
             currentWave = 1;
+            nextWave = 6;
             enemySpeed = SPRITE_MOVE_PIXELS_PER_MS / 2;
 
             //Bools
@@ -135,8 +134,8 @@ namespace Galaga
             m_quit = false;
             m_gameOver = false;
 
-            rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 300, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
-            leftWall = new Rectangle(270, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
+            rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 500, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
+            leftWall = new Rectangle(470, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
 
         }
         public double computeDistance(int pt1x, int pt1y, int pt2x, int pt2y)
@@ -209,6 +208,8 @@ namespace Galaga
                     enemy.rectangle.Y += (int)moveY;
 
                     enemy.rotation = computeRotation(enemy.rectangle.X, enemy.rectangle.Y, path[enemy.pathIndex + 1, 0], path[enemy.pathIndex + 1, 1]);
+                    
+
                 }
             }
         }
@@ -296,17 +297,8 @@ namespace Galaga
                     if (!m_gameOver)
                     {
                     m_inputKeyboard.Update(gameTime);
-                    moreEnemies -= gameTime.ElapsedGameTime.TotalSeconds;
-                    if(moreEnemies < 0)
-                    {
-                        moreEnemies = 5;
-                        generateEnemies(currentWave);
-                        currentWave += 1;
-                        if(currentWave > 3)
-                        {
-                            currentWave = 1;
-                        }
-                    }
+                    
+                    generateEnemies(currentWave, gameTime);
                         
 
                     //Update Enemies
@@ -381,7 +373,10 @@ namespace Galaga
                 {
                     foreach (Enemy enemy in enemies)
                     {
-                        if (intersect(enemy.rectangle, bullet))
+
+                        
+                        
+                        if (circleIntersect(enemy.rectangle, bullet))
                         {
                             deleteBullets.Add(bullet);
                             enemy.lives -= 1;
@@ -392,6 +387,16 @@ namespace Galaga
                
             }
             
+        }
+
+        private bool circleIntersect(Rectangle one, Rectangle two)
+        {
+
+            double radiusOne = one.Right - one.Center.X;
+            double radiustwo = two.Right - two.Center.X;
+
+            double distance = computeDistance(one.Center.X, one.Center.Y, two.Center.X, two.Center.Y);
+            return distance <= radiusOne + radiustwo;
         }
         private void checkEnemyLives()
         {
@@ -482,6 +487,8 @@ namespace Galaga
         }
         private bool intersect(Rectangle r1, Rectangle r2)
         {
+            
+
             bool theyDo = !(
             r2.Left > r1.Right ||
             r2.Right < r1.Left ||
@@ -490,7 +497,7 @@ namespace Galaga
             return theyDo;
         }
 
-  
+        
 
 
         private float drawMenuItem(SpriteFont font, string text, float y, Color color)
@@ -518,10 +525,14 @@ namespace Galaga
             for (int i = 0; i < enemies.Count; i++)
             {
                 if (enemies[i].enemyTexture == m_boss && enemies[i].lives == 1) {
-                    m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, Color.Blue);
+                    
+                    m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, null, Color.Blue, (float)(enemies[i].rotation), new Vector2(enemies[i].enemyTexture.Width /2, enemies[i].enemyTexture.Height / 2),
+                    SpriteEffects.None,0);
+                    
                 } else
                 {
-                    m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, Color.White);
+                    m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, null, Color.White, (float)(enemies[i].rotation), new Vector2(enemies[i].enemyTexture.Width / 2, enemies[i].enemyTexture.Height / 2),
+                    SpriteEffects.None, 0);
                 }
                 
             }
@@ -530,22 +541,23 @@ namespace Galaga
         {
             foreach (Enemy enemy in enemies)
             {
+                
                 if(enemy.pathIndex < topBeesPath.GetLength(0) - 1)
                 {
-
                     updateEnemyPath(enemy, gameTime, topBeesPath);
                 } else
                 {
+                    enemy.rotation = 0;
                     double distTraveled = enemy.directionX * enemySpeed * gameTime.ElapsedGameTime.TotalMilliseconds;
                     if (intersect(leftWall, enemy.rectangle) || intersect(rightWall, enemy.rectangle))
                     {
 
                         enemy.directionX *= -1;
-                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveled), (enemy.rectangle.Y), 30, 30);
+                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveled * 2), (enemy.rectangle.Y), CHARACTER_SIZE, CHARACTER_SIZE);
                     }
                     else
                     {
-                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X + distTraveled), (enemy.rectangle.Y), 30, 30);
+                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X + distTraveled), (enemy.rectangle.Y), CHARACTER_SIZE, CHARACTER_SIZE);
                     }
 
                 }
@@ -553,35 +565,67 @@ namespace Galaga
         }
 
 
-        private void generateEnemies(int wave)
+        private void generateEnemies(int wave, GameTime gameTime)
         {
-            //First Wave, Second Wave, Challenge Wave
-            if (wave == 1)
+
+            moreEnemies -= gameTime.ElapsedGameTime.TotalSeconds;
+            nextWave -= gameTime.ElapsedGameTime.TotalSeconds;
+            if (moreEnemies < 0)
             {
-               firstEnemyWave();
-            } else if (wave == 2)
-            {
-                secondEnemyWave();
-            } else if (wave == 3)
-            {
-                challengeWave();
+                moreEnemies = 0.45;
+                
+                //First Wave, Second Wave, Challenge Wave
+                if (wave == 1)
+                {
+                    if (enemies.Count < 10)
+                    {
+                        firstEnemyWave();
+                    }
+                    
+                }
+                else if (wave == 2)
+                {
+                    if (enemies.Count < 10)
+                    {
+                        secondEnemyWave();
+                    }
+                        
+                }
+                else if (wave == 3)
+                {
+                    if (enemies.Count < 10)
+                    {
+                        challengeWave();
+                    }
+                       
+                }  
             }
+
+            if(nextWave < 0 )
+            {
+                currentWave += 1;
+                if (currentWave > 3)
+                {
+                    currentWave = 1;
+                }
+                nextWave = 10;
+            }
+            
         }
         private void firstEnemyWave()
         {
-
-            enemies.Add(new Enemy(m_bee, 1, new Rectangle(topBeesPath[0,0], topBeesPath[0,1], 30, 30)));
-            enemies.Add(new Enemy(m_boss, 2, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1] ,30, 30)));
-            enemies.Add(new Enemy(m_bee, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], 30, 30)));
-            enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], 30, 30)));
+            
+         enemies.Add(new Enemy(m_bee, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE)));
+     
+            
         }
         private void secondEnemyWave()
         {
-
+            enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE)));
         }
         private void challengeWave()
         {
-
+            enemies.Add(new Enemy(m_boss, 2, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE)));
         }
         private void renderMenu()
         {
