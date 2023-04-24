@@ -13,6 +13,13 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin Fonts/enemyScore.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Fonts/enemyScore.spritefont
+
 #begin Fonts/menu-select.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor

@@ -27,7 +27,6 @@ namespace Galaga
         private bool m_pause;
         bool newGame;
         bool m_quit;
-        private bool m_gameOver;
         private bool m_waitforkey;
         private int m_selection;
         
@@ -42,14 +41,15 @@ namespace Galaga
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
         
 
-        private double gameOverTime;
+       
         private double m_score;
         private double moreEnemies;
-        private double nextWave;
+        
 
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
+        private SpriteFont m_enemyScoreFont;
 
         private ContentManager m_contentManager;
         private ParticleEmitter m_emitter1;
@@ -58,9 +58,13 @@ namespace Galaga
         private List<Rectangle> deleteBullets;
         private List<Enemy> enemies;
         private List<Enemy> deleteEnemies;
+        private List<(int, int, int)> destroyedEnemyScores;
+        private int enemiesCreated;
 
-        private int[,] topBeesPath;
-        private int[,] topButterflyPath;
+        private int[,] topRightPath;
+        private int[,] topLeftPath;
+        private int[,] bottomLeftPath;
+        private int[,] bottomRightPath;
 
         Rectangle m_player;
         Rectangle leftWall;
@@ -100,41 +104,47 @@ namespace Galaga
             deleteEnemies= new List<Enemy>();
 
             int center = m_graphics.PreferredBackBufferWidth / 2;
-            topBeesPath = new int[,]
+            topRightPath = new int[,]
             {
-            
-            /*
-             * Start Top Center Off right slightly
-             * Travel Down and Left
-             * Sop A little below half way and loop back up 
-             * stop around 1/3 height above middle
-             */
             {1000, 0},
             {500, 500},
             {800, 800 },
             {900, 500},
-          
             };
 
-            topButterflyPath = new int[,]
+            topLeftPath = new int[,]
             {
-
             {900, 0},
             {1350, 500},
             {1050, 800 },
             {900, 450},
+            };
 
+            bottomLeftPath = new int[,]
+            {
+            {1000, 1000},
+            {500, 800},
+            {800, 500 },
+            {900, 400},
+            };
+
+            bottomRightPath = new int[,]
+            {
+            {900, 1000},
+            {1350, 800},
+            {1050, 500 },
+            {900, 400},
             };
 
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, CHARACTER_SIZE, CHARACTER_SIZE);
+            destroyedEnemyScores = new List<(int, int, int)>();
             m_lives = 3;
 
-            gameOverTime = 5;
             m_selection = 0;
             m_score = 0;
             moreEnemies = 1;
             currentWave = 1;
-            nextWave = 2.5;
+            enemiesCreated = 0;
             
 
             //Bools
@@ -142,7 +152,6 @@ namespace Galaga
             m_waitforkey = false;
             m_pause = false;
             m_quit = false;
-            m_gameOver = false;
 
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 500, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(470, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
@@ -237,25 +246,21 @@ namespace Galaga
             m_bee = contentManager.Load<Texture2D>("Images/bee");
             m_boss = contentManager.Load<Texture2D>("Images/boss");
             m_butterfly = contentManager.Load<Texture2D>("Images/butterfly");
-            
+            m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
+
+
         }
 
         public override GameStateEnum processInput(GameTime gameTime)
         {
 
-            if (gameOverTime <= 0)
+            if (m_quit == true)
             {
                 newGame = true;
                 saveScore();
                 return GameStateEnum.MainMenu;
             }
 
-            if (m_quit)
-            {
-              newGame = true;
-              return GameStateEnum.MainMenu;
-                
-            }
             return GameStateEnum.NewGame;
         }
 
@@ -277,18 +282,7 @@ namespace Galaga
                     drawBullets();
 
                     drawEnemies();
-
-
-                    if (m_gameOver)
-                    {
-                        m_emitter1.draw(m_spriteBatch);
-                        Vector2 stringSize = m_font.MeasureString("Game Over" + m_score.ToString());
-                        m_spriteBatch.DrawString(
-                           m_font,
-                            "Game Over",
-                           new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2),
-                           Color.Red);
-                    }
+                    drawDestroyedEnemyScore();
 
                 }
             }
@@ -304,7 +298,7 @@ namespace Galaga
             }
             if (!m_pause)
             {
-                    if (!m_gameOver)
+                    if (!m_quit)
                     {
                     m_inputKeyboard.Update(gameTime);
                     
@@ -335,7 +329,7 @@ namespace Galaga
                     
 
                     //Check Bullet Collisions
-                    checkBulletCollisions();
+                    checkCollisions();
                     checkEnemyLives();
 
                     //Clean Up Dead Enemies and Off screen Bullets
@@ -363,8 +357,7 @@ namespace Galaga
                 } else
                     {
                         //Death
-                        m_emitter1.update(gameTime);
-                        gameOverTime -= gameTime.ElapsedGameTime.TotalSeconds;
+                        
                     }
                 }
             else
@@ -373,7 +366,7 @@ namespace Galaga
             }
         }
 
-        private void checkBulletCollisions()
+        private void checkCollisions()
         {
             
             //Check Collisions for each bullet and each Enemy
@@ -383,20 +376,28 @@ namespace Galaga
                 {
                     foreach (Enemy enemy in enemies)
                     {
-
-                        
-                        
                         if (circleIntersect(enemy.rectangle, bullet))
                         {
                             deleteBullets.Add(bullet);
                             enemy.lives -= 1;
-
                         } 
                     }
-                }
-               
+                } 
             }
-            
+            //Check Enemy and Player collision
+            foreach (Enemy enemy in enemies)
+            {
+                
+                if (circleIntersect(enemy.rectangle, m_player))
+                {
+                    m_lives -= 1;
+                    enemy.lives = 0;
+                    if (m_lives == 0)
+                    {
+                        m_quit = true;
+                    }
+                }
+            } 
         }
 
         private bool circleIntersect(Rectangle one, Rectangle two)
@@ -419,18 +420,38 @@ namespace Galaga
                     if(enemy.enemyTexture == m_bee)
                     {
                         m_score += 50;
+                        destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 50));
                     } else if (enemy.enemyTexture == m_boss)
                     {
                         m_score += 150;
+                        destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 150));
                     } else if (enemy.enemyTexture == m_butterfly)
                     {
                         m_score += 80;
+                        destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 80));
                     }
                 }
             }
         }
 
         
+        
+        private void drawDestroyedEnemyScore()
+        {
+            for (int i = 0; i < destroyedEnemyScores.Count; i++)
+            {
+                Vector2 stringSize = m_font.MeasureString(destroyedEnemyScores[i].Item3.ToString());
+                m_spriteBatch.DrawString(
+                   m_enemyScoreFont,
+                   destroyedEnemyScores[i].Item3.ToString(),
+                   new Vector2((destroyedEnemyScores[i].Item1 - stringSize.X), destroyedEnemyScores[i].Item2 - 10),
+                   Color.Red);
+
+            }
+            
+            
+            
+        }
         private void drawScore()
         {
             Vector2 stringSize = m_font.MeasureString("Score " + m_score.ToString());
@@ -564,11 +585,11 @@ namespace Galaga
                     {
 
                         enemy.directionX *= -1;
-                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveled * 2), (enemy.rectangle.Y), CHARACTER_SIZE, CHARACTER_SIZE);
+                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveled * 2), (int)(enemy.rectangle.Y + distTraveled * 5), CHARACTER_SIZE, CHARACTER_SIZE);
                     }
                     else
                     {
-                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X + distTraveled), (enemy.rectangle.Y), CHARACTER_SIZE, CHARACTER_SIZE);
+                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X + distTraveled), (enemy.rectangle.Y ), CHARACTER_SIZE, CHARACTER_SIZE);
                     }
 
                 }
@@ -580,7 +601,6 @@ namespace Galaga
         {
 
             moreEnemies -= gameTime.ElapsedGameTime.TotalSeconds;
-            nextWave -= gameTime.ElapsedGameTime.TotalSeconds;
             if (moreEnemies < 0)
             {
                 moreEnemies = 0.35;
@@ -611,23 +631,78 @@ namespace Galaga
                 }  
             }
 
-            if(nextWave < 0 )
+            if(enemiesCreated >= 41 )
             {
+                enemiesCreated = 0;
                 currentWave += 1;
                 if (currentWave > 3)
                 {
                     currentWave = 1;
                 }
-                nextWave = 10;
+                
             }
             
         }
         private void firstEnemyWave()
         {
             
-         enemies.Add(new Enemy(m_bee, 1, new Rectangle(topBeesPath[0, 0], topBeesPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topBeesPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
-         enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topButterflyPath[0, 0], topButterflyPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topButterflyPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+            if(enemiesCreated < 8)
+            {
+                enemies.Add(new Enemy(m_bee, 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemiesCreated += 2;
 
+                if(enemiesCreated == 8)
+                {
+                    moreEnemies = 10;
+                }
+            } else if(enemiesCreated < 17)
+            {
+                if (enemiesCreated % 2 == 0)
+                {
+                    enemiesCreated++;
+                    enemies.Add(new Enemy(m_boss, 2, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                    
+                }
+                else
+                {
+                    enemiesCreated++;
+                    enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                }
+
+                if (enemiesCreated == 17)
+                {
+                    moreEnemies = 10;
+                }
+
+            } else if (enemiesCreated < 25)
+            {
+                enemiesCreated++;
+                enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                if (enemiesCreated == 25)
+                {
+                    moreEnemies = 10;
+                }
+            }
+            else if (enemiesCreated < 33)
+            {
+                enemiesCreated++;
+                enemies.Add(new Enemy(m_bee, 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                if (enemiesCreated == 33)
+                {
+                    moreEnemies = 10;
+                }
+            }
+            else if (enemiesCreated < 41)
+            {
+                enemiesCreated++;
+                enemies.Add(new Enemy(m_bee, 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                if (enemiesCreated == 41)
+                {
+                    moreEnemies = 10;
+                }
+            }
+            
         }
         private void secondEnemyWave()
         {
