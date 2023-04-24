@@ -17,6 +17,9 @@ using System.Reflection.Metadata;
 using static System.Formats.Asn1.AsnWriter;
 using static System.Collections.Specialized.BitVector32;
 using static System.Net.Mime.MediaTypeNames;
+using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Audio;
+using System.Runtime.InteropServices;
 
 namespace Galaga
 {
@@ -52,7 +55,7 @@ namespace Galaga
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
         private SpriteFont m_enemyScoreFont;
-
+        private bool m_canPlayMusic = true;
         private ContentManager m_contentManager;
         private ParticleEmitter m_emitter1;
         
@@ -82,6 +85,10 @@ namespace Galaga
         private List<Texture2D> m_bee;
         private List<Texture2D> m_butterfly;
         private List<Texture2D> m_boss;
+
+        private Song m_backgroundMusic;
+        private SoundEffect m_shot;
+        private SoundEffect enemyHitSound;
 
 
         private string[] PauseState =
@@ -261,8 +268,9 @@ namespace Galaga
             m_butterfly.Add(contentManager.Load<Texture2D>("Images/butterfly"));
             m_butterfly.Add(contentManager.Load<Texture2D>("Images/butterfly2"));
             m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
-
-
+            m_backgroundMusic = contentManager.Load<Song>("Audio/backgroundMusic");
+            m_shot = contentManager.Load<SoundEffect>("Audio/shot");
+            enemyHitSound = contentManager.Load<SoundEffect>("Audio/hit");
         }
 
         public override GameStateEnum processInput(GameTime gameTime)
@@ -356,11 +364,20 @@ namespace Galaga
         }
         public override void update(GameTime gameTime)
         {
+            
+            if (m_canPlayMusic)
+            {
+                MediaPlayer.Play(m_backgroundMusic);
+                m_canPlayMusic = false;
+            }
+
+
             if (newGame)
             {
                 initializeNewGameState();
                 newGame = false;
             }
+            
             if (!m_pause)
             {
                     if (!m_quit)
@@ -468,6 +485,7 @@ namespace Galaga
                         {
                             if (circleIntersect(enemy.rectangle, bullet))
                             {
+                                enemyHitSound.Play();
                                 deleteBullets.Add(bullet);
                                 enemy.lives -= 1;
                             }
@@ -534,6 +552,7 @@ namespace Galaga
                 if(enemy.lives <= 0)
                 {
                     deleteEnemies.Add(enemy);
+                    
                     if(enemy.enemyTexture == m_bee[0] || enemy.enemyTexture == m_bee[1])
                     {
                         m_score += 50;
@@ -639,7 +658,8 @@ namespace Galaga
             //Fire Bullets 
             bullets.Add(new Rectangle(m_player.Center.X - bulletWidth/2, m_player.Y - 5, bulletWidth, bulletWidth));
             bulletsFired += 1;
-
+            m_shot.Play();
+            
         }
 
         private void drawBullets()
