@@ -20,6 +20,7 @@ using static System.Net.Mime.MediaTypeNames;
 using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Audio;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Galaga
 {
@@ -55,7 +56,7 @@ namespace Galaga
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
         private SpriteFont m_enemyScoreFont;
-        private bool m_canPlayMusic = true;
+        private bool m_canPlayMusic;
         private ContentManager m_contentManager;
         private ParticleEmitter m_emitter1;
         
@@ -167,7 +168,7 @@ namespace Galaga
             m_waitforkey = false;
             m_pause = false;
             m_quit = false;
-
+            m_canPlayMusic = true;
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 500, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(470, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
 
@@ -740,12 +741,33 @@ namespace Galaga
                 } else if (enemy.timeAlive > 15 )
                 {
                     //Throw Bullet
-                    enemyBullets.Add(new Rectangle (enemy.rectangle.Center.X, enemy.rectangle.Center.Y, bulletWidth, bulletWidth));
-                    //dive 
-                    enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 2;
+                    if (!enemy.shotBullet)
+                    {
+                        enemy.shotBullet = true;
+                        enemyBullets.Add(new Rectangle(enemy.rectangle.Center.X, enemy.rectangle.Center.Y, bulletWidth, bulletWidth));
+                    } 
                     
-                    //Right now just delete
-                    deleteEnemies.Add(enemy);
+                    
+                    enemy.realign -= gameTime.ElapsedGameTime.TotalSeconds;
+                    enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 5;
+                    //Change X direction Towards Player every 1.5 seconds
+                    if (enemy.realign <= 0)
+                    {
+                        enemy.realign = 1.5;
+                        if (m_player.X > enemy.rectangle.X)
+                        {
+                            enemy.directionX = -1;
+                        }
+                        else
+                        {
+                            enemy.directionX = 1;
+                        }
+                    }
+                    
+                    double distTraveledX = enemy.directionX * enemy.speed * gameTime.ElapsedGameTime.TotalMilliseconds;
+                    double distTraveledY = enemy.speed * gameTime.ElapsedGameTime.TotalMilliseconds;
+                    enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveledX * 2), (int)(enemy.rectangle.Y + distTraveledY), CHARACTER_SIZE, CHARACTER_SIZE);
+
 
                 } else
                 {
@@ -959,6 +981,8 @@ namespace Galaga
             public int[,] path;
             public double speed;
             public double timeAlive = 0;
+            public bool shotBullet = false;
+            public double realign = 0;
             public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle, int[,] path, double speed)
             {
                 this.enemyTexture = enemyTexture;
@@ -968,6 +992,12 @@ namespace Galaga
                 directionY = 1;
                 this.path = path;
                 this.speed = speed;
+
+                Random random = new Random();
+                if(random.Next() < 0.5)
+                {
+                    shotBullet = true;
+                }
             }
         }
 
