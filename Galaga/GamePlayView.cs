@@ -16,6 +16,7 @@ using System;
 using System.Reflection.Metadata;
 using static System.Formats.Asn1.AsnWriter;
 using static System.Collections.Specialized.BitVector32;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Galaga
 {
@@ -45,6 +46,7 @@ namespace Galaga
         private double m_score;
         private double moreEnemies;
         private double clearScores;
+        private double switchAnimation;
 
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
@@ -77,9 +79,10 @@ namespace Galaga
         private Texture2D m_squareTexture;
         private Texture2D m_background;
         private Texture2D m_playerTex;
-        private Texture2D m_bee;
-        private Texture2D m_boss;
-        private Texture2D m_butterfly;
+        private List<Texture2D> m_bee;
+        private List<Texture2D> m_butterfly;
+        private List<Texture2D> m_boss;
+
 
         private string[] PauseState =
         {
@@ -150,6 +153,7 @@ namespace Galaga
             currentWave = 1;
             enemiesCreated = 0;
             clearScores = 0.25;
+            switchAnimation = 0.75;
 
             //Bools
             newGame = true;
@@ -247,9 +251,15 @@ namespace Galaga
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
             m_playerTex = contentManager.Load<Texture2D>("Images/Player");
             m_bulletTex = contentManager.Load<Texture2D>("Images/bullet");
-            m_bee = contentManager.Load<Texture2D>("Images/bee");
-            m_boss = contentManager.Load<Texture2D>("Images/boss");
-            m_butterfly = contentManager.Load<Texture2D>("Images/butterfly");
+            m_bee = new List<Texture2D>();
+            m_bee.Add(contentManager.Load<Texture2D>("Images/bee"));
+            m_bee.Add(contentManager.Load<Texture2D>("Images/bee2"));
+            m_boss = new List<Texture2D>();
+            m_boss.Add(contentManager.Load<Texture2D>("Images/boss"));
+            m_boss.Add(contentManager.Load<Texture2D>("Images/boss2"));
+            m_butterfly = new List<Texture2D>();
+            m_butterfly.Add(contentManager.Load<Texture2D>("Images/butterfly"));
+            m_butterfly.Add(contentManager.Load<Texture2D>("Images/butterfly2"));
             m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
 
 
@@ -293,6 +303,57 @@ namespace Galaga
             m_spriteBatch.End();
         }
 
+        private void switchEnemyAnimation()
+        {
+            if (switchAnimation < 0)
+            {
+                if (enemies.Count > 0)
+                {
+                    switchAnimation = 0.75;
+                    foreach (Enemy enemy in enemies)
+                    {
+                        //Bee
+                        if (enemy.enemyTexture == m_bee[0])
+                        {
+                            enemy.enemyTexture = m_bee[1];
+                            continue;
+                        }
+                        else if (enemy.enemyTexture == m_bee[1])
+                        {
+                            enemy.enemyTexture = m_bee[0];
+                            continue;
+                        }
+
+                        //Butterfly
+                        if (enemy.enemyTexture == m_butterfly[0])
+                        {
+                            enemy.enemyTexture = m_butterfly[1];
+                            continue;
+                        }
+                        else if (enemy.enemyTexture == m_butterfly[1])
+                        {
+                            enemy.enemyTexture = m_butterfly[0];
+                            continue;
+                        }
+
+
+                        //Boss
+                        if (enemy.enemyTexture == m_boss[0])
+                        {
+                            enemy.enemyTexture = m_boss[1];
+                            continue;
+                        }
+                        else if (enemy.enemyTexture == m_boss[1])
+                        {
+                            enemy.enemyTexture = m_boss[0];
+                            continue;
+                        }
+                    }
+
+                }
+
+            }
+        }
         public override void update(GameTime gameTime)
         {
             if (newGame)
@@ -304,6 +365,11 @@ namespace Galaga
             {
                     if (!m_quit)
                     {
+
+                    switchAnimation -= gameTime.ElapsedGameTime.TotalSeconds;
+
+                    switchEnemyAnimation();
+                    
                     m_inputKeyboard.Update(gameTime);
                     
                     generateEnemies(currentWave, gameTime);
@@ -468,15 +534,15 @@ namespace Galaga
                 if(enemy.lives <= 0)
                 {
                     deleteEnemies.Add(enemy);
-                    if(enemy.enemyTexture == m_bee)
+                    if(enemy.enemyTexture == m_bee[0] || enemy.enemyTexture == m_bee[1])
                     {
                         m_score += 50;
                         destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 50));
-                    } else if (enemy.enemyTexture == m_boss)
+                    } else if (enemy.enemyTexture == m_boss[0] || enemy.enemyTexture == m_boss[1])
                     {
                         m_score += 150;
                         destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 150));
-                    } else if (enemy.enemyTexture == m_butterfly)
+                    } else if (enemy.enemyTexture == m_butterfly[0] || enemy.enemyTexture == m_butterfly[1])
                     {
                         m_score += 80;
                         destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 80));
@@ -500,10 +566,6 @@ namespace Galaga
                }
 
             }
-
-            
-
-
 
         }
         
@@ -633,7 +695,7 @@ namespace Galaga
         {
             for (int i = 0; i < enemies.Count; i++)
             {
-                if (enemies[i].enemyTexture == m_boss && enemies[i].lives == 1) {
+                if ( (enemies[i].enemyTexture == m_boss[0] || enemies[i].enemyTexture == m_boss[1]) && enemies[i].lives == 1) {
                     
                     m_spriteBatch.Draw(enemies[i].enemyTexture, enemies[i].rectangle, null, Color.Blue, (float)(enemies[i].rotation), new Vector2(enemies[i].enemyTexture.Width /2, enemies[i].enemyTexture.Height / 2),
                     SpriteEffects.None,0);
@@ -737,8 +799,8 @@ namespace Galaga
             
             if(enemiesCreated < 8)
             {
-                enemies.Add(new Enemy(m_bee, 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
-                enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
                 enemiesCreated += 2;
 
                 if(enemiesCreated == 8)
@@ -750,13 +812,13 @@ namespace Galaga
                 if (enemiesCreated % 2 == 0)
                 {
                     enemiesCreated++;
-                    enemies.Add(new Enemy(m_boss, 2, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                    enemies.Add(new Enemy(m_boss[0], 2, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
                     
                 }
                 else
                 {
                     enemiesCreated++;
-                    enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                    enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
                 }
 
                 if (enemiesCreated == 17)
@@ -767,7 +829,7 @@ namespace Galaga
             } else if (enemiesCreated < 25)
             {
                 enemiesCreated++;
-                enemies.Add(new Enemy(m_butterfly, 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
                 if (enemiesCreated == 25)
                 {
                     moreEnemies = 10;
@@ -776,7 +838,7 @@ namespace Galaga
             else if (enemiesCreated < 33)
             {
                 enemiesCreated++;
-                enemies.Add(new Enemy(m_bee, 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
                 if (enemiesCreated == 33)
                 {
                     moreEnemies = 10;
@@ -785,7 +847,7 @@ namespace Galaga
             else if (enemiesCreated < 41)
             {
                 enemiesCreated++;
-                enemies.Add(new Enemy(m_bee, 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
                 if (enemiesCreated == 41)
                 {
                     moreEnemies = 10;
