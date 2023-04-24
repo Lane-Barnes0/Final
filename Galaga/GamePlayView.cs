@@ -44,7 +44,7 @@ namespace Galaga
        
         private double m_score;
         private double moreEnemies;
-        
+        private double clearScores;
 
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
@@ -122,15 +122,15 @@ namespace Galaga
 
             bottomLeftPath = new int[,]
             {
-            {1000, 1000},
-            {500, 800},
+            {500, 1000},
+            {700, 800},
             {800, 500 },
             {900, 400},
             };
 
             bottomRightPath = new int[,]
             {
-            {900, 1000},
+            {1500, 1000},
             {1350, 800},
             {1050, 500 },
             {900, 400},
@@ -145,7 +145,7 @@ namespace Galaga
             moreEnemies = 1;
             currentWave = 1;
             enemiesCreated = 0;
-            
+            clearScores = 0.25;
 
             //Bools
             newGame = true;
@@ -354,6 +354,14 @@ namespace Galaga
                         deleteEnemies.Clear();
                     }
 
+                    //Clean Up Scores
+                    if(destroyedEnemyScores.Count > 0)
+                    {
+                    clearScores -= gameTime.ElapsedGameTime.TotalSeconds;
+                    if (clearScores < 0) { clearScores = 0.25; destroyedEnemyScores.Clear(); }
+                    }
+                    
+
                 } else
                     {
                         //Death
@@ -444,7 +452,7 @@ namespace Galaga
                 m_spriteBatch.DrawString(
                    m_enemyScoreFont,
                    destroyedEnemyScores[i].Item3.ToString(),
-                   new Vector2((destroyedEnemyScores[i].Item1 - stringSize.X), destroyedEnemyScores[i].Item2 - 10),
+                   new Vector2((destroyedEnemyScores[i].Item1 - stringSize.X), destroyedEnemyScores[i].Item2 - CHARACTER_SIZE),
                    Color.Red);
 
             }
@@ -572,10 +580,19 @@ namespace Galaga
         {
             foreach (Enemy enemy in enemies)
             {
-                
+                enemy.timeAlive += gameTime.ElapsedGameTime.TotalSeconds;
+
                 if(enemy.pathIndex < enemy.path.GetLength(0) - 1)
                 {
                     updateEnemyPath(enemy, gameTime, enemy.path);
+                } else if (enemy.timeAlive > 15 )
+                {
+                    //dive 
+                    enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 2;
+                    
+                    //Right now just delete
+                    deleteEnemies.Add(enemy);
+
                 } else
                 {
                     enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 4;
@@ -585,7 +602,7 @@ namespace Galaga
                     {
 
                         enemy.directionX *= -1;
-                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveled * 2), (int)(enemy.rectangle.Y + distTraveled * 5), CHARACTER_SIZE, CHARACTER_SIZE);
+                        enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveled * 2), (enemy.rectangle.Y), CHARACTER_SIZE, CHARACTER_SIZE);
                     }
                     else
                     {
@@ -787,6 +804,7 @@ namespace Galaga
             public double rotation = 0;
             public int[,] path;
             public double speed;
+            public double timeAlive = 0;
             public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle, int[,] path, double speed)
             {
                 this.enemyTexture = enemyTexture;
