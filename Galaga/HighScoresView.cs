@@ -44,6 +44,8 @@ namespace Galaga
         {
             m_spriteBatch.Begin();
 
+            m_spriteBatch.Draw(m_background, new Rectangle(0,0,m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight), Color.White);
+
             m_spriteBatch.DrawString(m_font, "HIGH SCORES", new Vector2(700, 110), Color.Yellow);
 
             if (highscores.Count > 0)
