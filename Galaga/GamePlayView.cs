@@ -185,7 +185,7 @@ namespace Galaga
                 {500, 850},
                 {700, 750},
                 {800, 450 },
-                {900, 350},
+                {900, 300},
             };
             bottomRightPath = new int[,]
             {
