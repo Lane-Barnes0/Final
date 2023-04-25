@@ -34,8 +34,9 @@ namespace Galaga
         bool m_quit;
         private bool m_waitforkey;
         private int m_selection;
-        
+        private bool playerDeath;
 
+        private (int, int) deathLocation;
         private const int Wall_THICKNESS = 30;
         private const int CHARACTER_SIZE = 30;
         private int currentWave;
@@ -44,7 +45,7 @@ namespace Galaga
         private int bulletWidth;
         private float bulletSpeed = 700.0f / 1000.0f;
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
-        
+        private double playerDeathTimer;
 
        
         private double m_score;
@@ -86,10 +87,11 @@ namespace Galaga
         private List<Texture2D> m_bee;
         private List<Texture2D> m_butterfly;
         private List<Texture2D> m_boss;
-
+        private Texture2D m_explosion;
         private Song m_backgroundMusic;
         private SoundEffect m_shot;
         private SoundEffect enemyHitSound;
+        private SoundEffect playerDeathSound;
 
 
         private string[] PauseState =
@@ -122,8 +124,12 @@ namespace Galaga
             topRightPath = new int[,]
             {
             {1000, 0},
+            {750, 250},
             {500, 500},
+            {650, 650},
             {800, 800 },
+            {850, 800},
+            {850, 500},
             {900, 500},
             };
 
@@ -162,13 +168,15 @@ namespace Galaga
             enemiesCreated = 0;
             clearScores = 0.25;
             switchAnimation = 0.75;
-
+            deathLocation = (0, 0);
+            playerDeathTimer = 0;
             //Bools
             newGame = true;
             m_waitforkey = false;
             m_pause = false;
             m_quit = false;
             m_canPlayMusic = true;
+            playerDeath = false;
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 500, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(470, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
 
@@ -184,8 +192,10 @@ namespace Galaga
 
         public double computeRotation(int pt1x, int pt1y, int pt2x, int pt2y)
         {
-            double dx = pt2x - pt1x;
-            double dy = pt2y - pt1y;
+
+            
+            double dx = pt1x - pt2x;
+            double dy = pt1y - pt2y;
 
             if (dx == 0)
             {
@@ -193,14 +203,21 @@ namespace Galaga
             }
 
             double angle = Math.Atan(dy / dx);
-            if (pt2x < pt1x)
+            
+            if (pt1x < pt2x)
             {
-                angle += Math.PI;
+                angle -= Math.PI;
             }
+
             if (pt2y < pt1y)
+            {
+                angle += Math.PI / 2.0;
+            }
+            if (pt2y > pt1y)
             {
                 angle -= Math.PI / 2.0;
             }
+
 
             return angle;
         }
@@ -259,6 +276,7 @@ namespace Galaga
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
             m_playerTex = contentManager.Load<Texture2D>("Images/Player");
             m_bulletTex = contentManager.Load<Texture2D>("Images/bullet");
+            m_explosion = contentManager.Load<Texture2D>("Images/explosion");
             m_bee = new List<Texture2D>
             {
                 contentManager.Load<Texture2D>("Images/bee"),
@@ -278,6 +296,7 @@ namespace Galaga
             m_backgroundMusic = contentManager.Load<Song>("Audio/backgroundMusic");
             m_shot = contentManager.Load<SoundEffect>("Audio/shot");
             enemyHitSound = contentManager.Load<SoundEffect>("Audio/hit");
+            playerDeathSound = contentManager.Load<SoundEffect>("Audio/playerDeath");
         }
 
         public override GameStateEnum processInput(GameTime gameTime)
@@ -306,6 +325,10 @@ namespace Galaga
                 }
                 else
                 {
+                    if(playerDeath)
+                    {
+                        m_spriteBatch.Draw(m_explosion, new Rectangle(deathLocation.Item1, deathLocation.Item2, CHARACTER_SIZE * 2, CHARACTER_SIZE * 2), Color.White);
+                    }
                     drawScore();
                     m_spriteBatch.Draw(m_playerTex, m_player, Color.White);
                     drawBullets();
@@ -371,7 +394,14 @@ namespace Galaga
         }
         public override void update(GameTime gameTime)
         {
-            
+            if(playerDeathTimer <= 0)
+            {
+                m_player.Y = m_graphics.PreferredBackBufferHeight - 100;
+                playerDeath = false;
+            } else
+            {
+                playerDeathTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+            }
             if (m_canPlayMusic)
             {
                 MediaPlayer.Play(m_backgroundMusic);
@@ -514,6 +544,15 @@ namespace Galaga
                         if (circleIntersect(m_player, bullet))
                         {
                             m_lives -= 1;
+
+                            
+                            //Move Player Off Screen, Play Explosion, Wait 2 Seconds, Move Player Back onto the Screen
+                            deathLocation = (m_player.X, m_player.Y);
+                            m_player.Y = m_graphics.PreferredBackBufferHeight + 500;
+                            m_player.X = m_graphics.PreferredBackBufferWidth / 2;
+                            playerDeath = true;
+                            playerDeathTimer = 2;
+                            playerDeathSound.Play();
                             deleteEnemyBullets.Add(bullet);
                             if (m_lives == 0)
                             {
@@ -531,6 +570,14 @@ namespace Galaga
                 if (circleIntersect(enemy.rectangle, m_player))
                 {
                     m_lives -= 1;
+                    //Move Player Off Screen, Play Explosion, Wait 2 Seconds, Move Player Back onto the Screen
+                    deathLocation = (m_player.X, m_player.Y);
+                    m_player.Y = m_graphics.PreferredBackBufferHeight + 500;
+                    m_player.X = m_graphics.PreferredBackBufferWidth / 2;
+                    playerDeath = true;
+                    playerDeathTimer = 2;
+                    playerDeathSound.Play();
+
                     enemy.lives = 0;
                     if (m_lives == 0)
                     {
@@ -806,7 +853,7 @@ namespace Galaga
             moreEnemies -= gameTime.ElapsedGameTime.TotalSeconds;
             if (moreEnemies < 0)
             {
-                moreEnemies = 0.35;
+                moreEnemies = 0.3;
                 
                 //First Wave, Second Wave, Challenge Wave
                 if (wave == 1)
@@ -851,8 +898,8 @@ namespace Galaga
             
             if(enemiesCreated < 8)
             {
-                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
-                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 enemiesCreated += 2;
 
                 if(enemiesCreated == 8)
@@ -864,13 +911,13 @@ namespace Galaga
                 if (enemiesCreated % 2 == 0)
                 {
                     enemiesCreated++;
-                    enemies.Add(new Enemy(m_boss[0], 2, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                    enemies.Add(new Enemy(m_boss[0], 2, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                     
                 }
                 else
                 {
                     enemiesCreated++;
-                    enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                    enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 }
 
                 if (enemiesCreated == 17)
@@ -881,7 +928,7 @@ namespace Galaga
             } else if (enemiesCreated < 25)
             {
                 enemiesCreated++;
-                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 25)
                 {
                     moreEnemies = 10;
@@ -890,7 +937,7 @@ namespace Galaga
             else if (enemiesCreated < 33)
             {
                 enemiesCreated++;
-                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 33)
                 {
                     moreEnemies = 10;
@@ -899,7 +946,7 @@ namespace Galaga
             else if (enemiesCreated < 41)
             {
                 enemiesCreated++;
-                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 2));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 41)
                 {
                     moreEnemies = 10;
@@ -1004,7 +1051,7 @@ namespace Galaga
                 this.speed = speed;
 
                 Random random = new Random();
-                if(random.Next() < 0.5)
+                if(random.NextDouble() < 0.50)
                 {
                     shotBullet = true;
                 }

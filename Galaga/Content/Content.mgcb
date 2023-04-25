@@ -25,6 +25,12 @@
 /processorParam:Quality=Best
 /build:Audio/hit.wav
 
+#begin Audio/playerDeath.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/playerDeath.wav
+
 #begin Audio/shot.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -147,6 +153,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Images/butterfly2.png
+
+#begin Images/explosion.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Images/explosion.png
 
 #begin Images/particle.png
 /importer:TextureImporter
