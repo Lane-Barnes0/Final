@@ -46,7 +46,7 @@ namespace Galaga
         private int bulletWidth;
         private float bulletSpeed = 700.0f / 1000.0f;
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
-        public const int WAVE_SPAWN_RATE = 5;
+        public const int WAVE_SPAWN_RATE = 3;
         private double playerDeathTimer;
         private int enemiesHit;
         private int nextShip;
@@ -77,9 +77,16 @@ namespace Galaga
 
         private int[,] topRightPath;
         private int[,] topLeftPath;
+        private int[,] topRightPathUpper;
+        private int[,] topLeftPathUpper;
         private int[,] bottomLeftPath;
+        private int[,] bottomLeftPathUpper;
         private int[,] bottomRightPath;
-
+        private int[,] bottomRightPathUpper;
+        private int[,] challengeTopLeft;
+        private int[,] challengeTopRight;
+        private int[,] challengeBottomRight;
+        private int[,] challengeBottomLeft;
         Rectangle m_player;
         Rectangle leftWall;
         Rectangle rightWall;
@@ -146,20 +153,100 @@ namespace Galaga
             {900, 450},
             };
 
-            bottomLeftPath = new int[,]
+            topRightPathUpper = new int[,]
             {
-            {500, 1000},
-            {700, 800},
-            {800, 500 },
+            {1000, -50},
+            {750, 200},
+            {500, 450},
+            {650, 600},
+            {800, 750 },
+            {850, 750},
+            {850, 450},
             {900, 400},
             };
 
+            topLeftPathUpper = new int[,]
+            {
+            {900, -50},
+            {1350, 450},
+            {1050, 750 },
+            {900, 500},
+            };
+
+            bottomLeftPath = new int[,]
+            {
+            {500, 900},
+            {700, 800},
+            {800, 500 },
+            {900, 350},
+            };
+            bottomLeftPathUpper = new int[,]
+            {
+                {500, 850},
+                {700, 750},
+                {800, 450 },
+                {900, 350},
+            };
             bottomRightPath = new int[,]
             {
-            {1500, 1000},
+            {1500, 900},
             {1350, 800},
             {1050, 500 },
-            {900, 550},
+            {900, 600},
+            };
+
+            bottomRightPathUpper = new int[,]
+            {
+            {1500, 850},
+            {1350, 750},
+            {1050, 450 },
+            {900, 300},
+            };
+
+
+            challengeTopRight = new int[,]
+            {
+            {1050, 0},
+            {1050, 500},
+            {900, 600 },
+            {700, 800},
+            {600, 700},
+            {2400, 300},
+            };
+
+            challengeTopLeft = new int[,]
+            {
+            {900, 0},
+            {900, 500},
+            {1050, 600 },
+            {1200, 800},
+            {1300, 700},
+            {-1110, 300},
+            };
+
+            challengeBottomLeft = new int[,]
+            {
+            {400, 900},
+            {600, 900},
+            {1000, 500},
+
+            {900, 400},
+            {800, 500},
+            {800, 600},
+            {2000, 300 },
+            
+            };
+
+            challengeBottomRight = new int[,]
+            {
+            {1500, 900},
+            {1200, 900},
+            {800, 500 },
+
+            {900, 400},
+            {1000, 500},
+            {1000, 600},
+            {-1000, 300 }
             };
 
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, CHARACTER_SIZE, CHARACTER_SIZE);
@@ -358,6 +445,30 @@ namespace Galaga
                         drawEnemies();
                         drawDestroyedEnemyScore();
 
+
+                        if(moreEnemies > WAVE_SPAWN_RATE)
+                        {
+                            if(currentWave == 3)
+                            {
+                                Vector2 stringSize = m_font.MeasureString("Challenge Wave Incoming");
+                                m_spriteBatch.DrawString(
+                                   m_font,
+                                    "Challenge Wave Incoming",
+                                   new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, 100),
+                                   Color.Teal);
+                            } else
+                            {
+                                Vector2 stringSize = m_font.MeasureString("Wave " + currentWave.ToString() + " Incoming");
+                                m_spriteBatch.DrawString(
+                                   m_font,
+                                    "Wave " + currentWave.ToString() + " Incoming",
+                                   new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, 100),
+                                   Color.Teal);
+                            }
+                           
+
+                        }
+                        
                     }
 
 
@@ -366,7 +477,7 @@ namespace Galaga
                     Vector2 stringSize = m_font.MeasureString("Player One ");
                     m_spriteBatch.DrawString(
                        m_font,
-                        "Player One: ",
+                        "Player One ",
                        new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 100),
                        Color.Teal);
 
@@ -374,7 +485,7 @@ namespace Galaga
                     m_spriteBatch.DrawString(
                        m_font,
                         "New Ship After Every " + nextShip.ToString() + " Points",
-                       new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 50),
+                       new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 25),
                        Color.Teal);
                 }
                 
@@ -733,7 +844,7 @@ namespace Galaga
             if (m_score > nextShip)
             {
                 m_lives += 1;
-                nextShip *= 2;
+                nextShip += 2000;
             }
         }
 
@@ -901,12 +1012,19 @@ namespace Galaga
         {
             foreach (Enemy enemy in enemies)
             {
-                enemy.timeAlive += gameTime.ElapsedGameTime.TotalSeconds;
+                //If off screen delete
 
+                if(enemy.rectangle.X < 0 || 
+                   enemy.rectangle.X > m_graphics.PreferredBackBufferWidth ||
+                   enemy.rectangle.Y < 0 ||
+                   enemy.rectangle.Y > m_graphics.PreferredBackBufferHeight) { deleteEnemies.Add(enemy);  continue; }
+
+
+                enemy.timeAlive += gameTime.ElapsedGameTime.TotalSeconds;
                 if(enemy.pathIndex < enemy.path.GetLength(0) - 1)
                 {
                     updateEnemyPath(enemy, gameTime, enemy.path);
-                } else if (enemy.timeAlive > 15 )
+                } else if (enemy.timeAlive > 10 )
                 {
                     //Throw Bullet
                     if (!enemy.shotBullet)
@@ -969,30 +1087,18 @@ namespace Galaga
             if (moreEnemies < 0)
             {
                 moreEnemies = 0.3;
-                
                 //First Wave, Second Wave, Challenge Wave
                 if (wave == 1)
-                {
-                    
+                { 
                 firstEnemyWave();
-                    
-                    
                 }
                 else if (wave == 2)
-                {
-                    if (enemies.Count < 10)
-                    {
-                        secondEnemyWave();
-                    }
-                        
+                {                 
+                secondEnemyWave();       
                 }
                 else if (wave == 3)
                 {
-                    if (enemies.Count < 10)
-                    {
-                        challengeWave();
-                    }
-                       
+                 challengeWave();     
                 }  
             }
 
@@ -1064,18 +1170,135 @@ namespace Galaga
                 enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 41)
                 {
-                    moreEnemies = WAVE_SPAWN_RATE;
+                    //Give more time between Waves
+                    moreEnemies = WAVE_SPAWN_RATE * 2;
+
                 }
             }
             
         }
         private void secondEnemyWave()
         {
-            
+            if (enemiesCreated < 8)
+            {
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemiesCreated += 2;
+
+                if (enemiesCreated == 8)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+            }
+            else if (enemiesCreated < 16)
+            {
+                  enemiesCreated+= 2;
+                    enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomLeftPathUpper[0, 0], bottomLeftPathUpper[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPathUpper, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                    enemies.Add(new Enemy(m_boss[0], 2, new Rectangle(bottomLeftPath[0, 0], bottomLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+
+
+                if (enemiesCreated == 16)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+
+            }
+            else if (enemiesCreated < 24)
+            {
+                enemiesCreated+=2;
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomRightPathUpper[0, 0], bottomRightPathUpper[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPathUpper, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                if (enemiesCreated == 24)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+            }
+            else if (enemiesCreated < 32)
+            {
+                enemiesCreated+= 2;
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPathUpper[0, 0], topRightPathUpper[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPathUpper, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                if (enemiesCreated == 32)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+            }
+            else if (enemiesCreated < 40)
+            {
+                enemiesCreated+= 2;
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPathUpper[0, 0], topLeftPathUpper[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPathUpper, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                if (enemiesCreated == 40)
+                {
+                    enemiesCreated += 1;
+                    moreEnemies = WAVE_SPAWN_RATE * 3;
+                }
+            }
         }
         private void challengeWave()
         {
-            
+            if (enemiesCreated < 8)
+            {
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(challengeTopLeft[0, 0], challengeTopLeft[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeTopLeft, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(challengeTopRight[0, 0], challengeTopRight[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeTopRight, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                enemiesCreated += 2;
+
+                if (enemiesCreated == 8)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+            }
+            else if (enemiesCreated < 16)
+            {
+                
+                    if (enemiesCreated % 2 == 0)
+                    {
+                        enemiesCreated++;
+                        enemies.Add(new Enemy(m_boss[0], 2, new Rectangle(challengeBottomLeft[0, 0], challengeBottomLeft[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeBottomLeft, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+
+                    }
+                    else
+                    {
+                        enemiesCreated++;
+                        enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(challengeBottomLeft[0, 0], challengeBottomLeft[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeBottomLeft, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                    }
+
+                    if (enemiesCreated == 16)
+                    {
+                        moreEnemies = WAVE_SPAWN_RATE;
+                    }    
+
+            }
+            else if (enemiesCreated < 24)
+            {
+                enemiesCreated ++;
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(challengeBottomRight[0, 0], challengeBottomRight[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeBottomRight, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                
+                if (enemiesCreated == 24)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+            }
+            else if (enemiesCreated < 32)
+            {
+                enemiesCreated++;
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(challengeTopRight[0, 0], challengeTopRight[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeTopRight, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+                if (enemiesCreated == 32)
+                {
+                    moreEnemies = WAVE_SPAWN_RATE;
+                }
+            }
+            else if (enemiesCreated < 40)
+            {
+                enemiesCreated ++;
+                enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(challengeTopLeft[0, 0], challengeTopLeft[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), challengeTopLeft, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
+               
+                if (enemiesCreated == 40)
+                {
+                    enemiesCreated += 1;
+                    moreEnemies = WAVE_SPAWN_RATE * 2;
+                }
+            }
         }
         private void renderMenu()
         {
