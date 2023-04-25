@@ -16,6 +16,7 @@ namespace Galaga
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
         private Texture2D m_background;
+        private double afkTimer;
         private KeyboardState m_previousKeyboard;
         private enum MenuState
         {
@@ -31,8 +32,10 @@ namespace Galaga
         private MenuState m_currentSelection = MenuState.NewGame;
         private bool m_waitForKeyRelease = false;
 
+        
         public override void loadContent(ContentManager contentManager)
         {
+            afkTimer = 10;
             m_background = contentManager.Load<Texture2D>("Images/background");
             m_fontMenu = contentManager.Load<SpriteFont>("Fonts/menu");
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
@@ -100,7 +103,16 @@ namespace Galaga
         }
         public override void update(GameTime gameTime)
         {
+            if (m_previousKeyboard == Keyboard.GetState()) {
+                afkTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+            } else
+            {
+                afkTimer = 10;
+            }
+
+
             m_previousKeyboard = Keyboard.GetState();
+            
         }
         public override void render(GameTime gameTime)
         {
@@ -119,6 +131,23 @@ namespace Galaga
             
             drawMenuItem(m_currentSelection == MenuState.Exit ? m_fontMenuSelect : m_fontMenu, "Quit", bottom, m_currentSelection == MenuState.Exit ? Color.Yellow : Color.Blue);
 
+
+            if(afkTimer <= 0)
+            {
+                Vector2 stringSize = m_fontMenu.MeasureString("AFK? Please come back Soon");
+                m_spriteBatch.DrawString(
+                   m_fontMenu,
+                    "AFK? Please come back Soon.",
+                   new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight - 200),
+                   Color.Teal);
+
+                stringSize = m_fontMenu.MeasureString("(Attract Mode)");
+                m_spriteBatch.DrawString(
+                   m_fontMenu,
+                    "(Attract Mode)",
+                   new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight - 100),
+                   Color.Teal);
+            }
             m_spriteBatch.End();
         }
 
