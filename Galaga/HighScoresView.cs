@@ -63,6 +63,17 @@ namespace Galaga
         public override void update(GameTime gameTime)
         {
             loadSomething();
+
+            if (m_loadedState != null)
+            {
+                if (!highscores.Contains((int)m_loadedState.Score))
+                {
+                    highscores.Add((int)m_loadedState.Score);
+                }
+
+                highscores.Sort();
+                highscores.Reverse();
+            }
         }
 
         private void loadSomething()
@@ -76,7 +87,7 @@ namespace Galaga
                 }
             }
         }
-        private Scoring m_loadedState = null;
+        private GameState m_loadedState = null;
 
         private async void finalizeLoadAsync()
         {
@@ -92,8 +103,8 @@ namespace Galaga
                             {
                                 if (fs != null)
                                 {
-                                    XmlSerializer mySerializer = new XmlSerializer(typeof(Scoring));
-                                    m_loadedState = (Scoring)mySerializer.Deserialize(fs);
+                                    XmlSerializer mySerializer = new XmlSerializer(typeof(GameState));
+                                    m_loadedState = (GameState)mySerializer.Deserialize(fs);
                                 }
                             }
                         }

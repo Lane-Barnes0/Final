@@ -109,6 +109,49 @@ namespace Galaga
         private SoundEffect playerDeathSound;
 
 
+        private void saveScore()
+        {
+            lock (this)
+            {
+                if (!this.saving)
+                {
+                    this.saving = true;
+                    //
+                    // Create something to save
+                    GameState myState = new GameState((uint) m_score);
+                    finalizeSaveAsync(myState);
+                }
+            }
+        }
+
+        private async void finalizeSaveAsync(GameState state)
+        {
+            await Task.Run(() =>
+            {
+                using (IsolatedStorageFile storage = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    try
+                    {
+                        using (IsolatedStorageFileStream fs = storage.OpenFile("HighScores.xml", FileMode.Create))
+                        {
+                            if (fs != null)
+                            {
+                                XmlSerializer mySerializer = new XmlSerializer(typeof(GameState));
+                                mySerializer.Serialize(fs, state);
+                            }
+                        }
+                    }
+                    catch (IsolatedStorageException)
+                    {
+                        // Ideally show something to the user, but this is demo code :)
+                    }
+                }
+
+                this.saving = false;
+            });
+        }
+
+
         private string[] PauseState =
         {
             "Resume",
@@ -1491,47 +1534,7 @@ namespace Galaga
             }
         }
 
-        private void saveScore()
-        {
-            lock (this)
-            {
-                if (!this.saving)
-                {
-                    this.saving = true;
-                    //
-                    // Create something to save
-                    Scoring myState = new Scoring((int)m_score);
-                    finalizeSaveAsync(myState);
-                }
-            }
-        }
-
-        private async void finalizeSaveAsync(Scoring state)
-        {
-            await Task.Run(() =>
-            {
-                using (IsolatedStorageFile storage = IsolatedStorageFile.GetUserStoreForApplication())
-                {
-                    try
-                    {
-                        using (IsolatedStorageFileStream fs = storage.OpenFile("HighScores.xml", FileMode.Create))
-                        {
-                            if (fs != null)
-                            {
-                                XmlSerializer mySerializer = new XmlSerializer(typeof(Scoring));
-                                mySerializer.Serialize(fs, state);
-                            }
-                        }
-                    }
-                    catch (IsolatedStorageException)
-                    {
-                        // Ideally show something to the user, but this is demo code :)
-                    }
-                }
-
-                this.saving = false;
-            });
-        }
+        
 
     }
 }
