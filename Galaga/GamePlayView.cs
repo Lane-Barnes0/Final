@@ -482,8 +482,6 @@ namespace Galaga
             {
                 return GameStateEnum.NewGame;
             }
-
-            
         }
 
         public void drawDeathAnimations()
