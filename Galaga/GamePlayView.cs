@@ -29,7 +29,6 @@ namespace Galaga
     {
         
         private bool saving = false;
-        private bool m_wait;
         private bool m_pause;
         public bool newGame;
         bool m_quit;
@@ -58,13 +57,13 @@ namespace Galaga
         private double gameStartTimer;
         private double gameOverTimer;
         private double newGameTimer;
+        private double explosionAnimationTimer;
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
         private SpriteFont m_enemyScoreFont;
         private bool m_canPlayMusic;
-        private ContentManager m_contentManager;
-        private ParticleEmitter m_emitter1;
+        private int explosionAnimation;
         
         private List<Rectangle> bullets;
         private List<Rectangle> deleteBullets;
@@ -99,7 +98,7 @@ namespace Galaga
         private List<Texture2D> m_bee;
         private List<Texture2D> m_butterfly;
         private List<Texture2D> m_boss;
-        private Texture2D m_explosion;
+        private List<Texture2D> m_explosion;
         private Song m_backgroundMusic;
         private SoundEffect m_shot;
         private SoundEffect enemyHitSound;
@@ -268,6 +267,8 @@ namespace Galaga
             gameStartTimer = 5;
             gameOverTimer = 5;
             newGameTimer = 0;
+            explosionAnimation = 0;
+            explosionAnimationTimer = 0.25;
             //Bools
             newGame = true;
             m_waitforkey = false;
@@ -367,7 +368,7 @@ namespace Galaga
         public override void loadContent(ContentManager contentManager)
         {
             initializeNewGameState();
-            m_contentManager = contentManager;
+           
             m_background = contentManager.Load<Texture2D>("Images/background");
             m_font = contentManager.Load<SpriteFont>("Fonts/menu");
             m_squareTexture = contentManager.Load<Texture2D>("Images/square");
@@ -375,7 +376,7 @@ namespace Galaga
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
             m_playerTex = contentManager.Load<Texture2D>("Images/Player");
             m_bulletTex = contentManager.Load<Texture2D>("Images/bullet");
-            m_explosion = contentManager.Load<Texture2D>("Images/explosion");
+            
             m_bee = new List<Texture2D>
             {
                 contentManager.Load<Texture2D>("Images/bee"),
@@ -390,6 +391,15 @@ namespace Galaga
             {
                 contentManager.Load<Texture2D>("Images/butterfly"),
                 contentManager.Load<Texture2D>("Images/butterfly2")
+            };
+
+            m_explosion = new List<Texture2D>
+            {
+                contentManager.Load<Texture2D>("Images/explosion0"),
+                contentManager.Load<Texture2D>("Images/explosion"),
+                contentManager.Load<Texture2D>("Images/explosion2"),
+                contentManager.Load<Texture2D>("Images/explosion3")
+
             };
             m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
             m_backgroundMusic = contentManager.Load<Song>("Audio/backgroundMusic");
@@ -436,7 +446,7 @@ namespace Galaga
                     {
                         if (playerDeath)
                         {
-                            m_spriteBatch.Draw(m_explosion, new Rectangle(deathLocation.Item1, deathLocation.Item2, CHARACTER_SIZE * 2, CHARACTER_SIZE * 2), Color.White);
+                            m_spriteBatch.Draw(m_explosion[explosionAnimation], new Rectangle(deathLocation.Item1, deathLocation.Item2, CHARACTER_SIZE * 2, CHARACTER_SIZE * 2), Color.White);
                         }
                         drawScore();
                         m_spriteBatch.Draw(m_playerTex, m_player, Color.White);
@@ -611,6 +621,16 @@ namespace Galaga
                 if (playerDeath)
                 {
                     m_player.X = m_graphics.PreferredBackBufferWidth / 2;
+                    explosionAnimationTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+                    if(explosionAnimationTimer <= 0)
+                    {
+                        explosionAnimation += 1;
+                        explosionAnimationTimer = 0.25;
+                        if(explosionAnimation == 4)
+                        {
+                            explosionAnimation = 0;
+                        }
+                    }
                 }
                 if (playerDeathTimer < 0)
                 {
