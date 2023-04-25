@@ -65,6 +65,7 @@ namespace Galaga
         private bool m_canPlayMusic;
         private int explosionAnimation;
         
+        
         private List<Rectangle> bullets;
         private List<Rectangle> deleteBullets;
         private List<Rectangle> enemyBullets;
@@ -72,6 +73,8 @@ namespace Galaga
         private List<Enemy> enemies;
         private List<Enemy> deleteEnemies;
         private List<(int, int, int)> destroyedEnemyScores;
+        private List<DeathAnimation> destroyedEnemyAnimations;
+        private List<DeathAnimation> deleteDeathAnimations;
         private int enemiesCreated;
 
         private int[,] topRightPath;
@@ -99,6 +102,7 @@ namespace Galaga
         private List<Texture2D> m_butterfly;
         private List<Texture2D> m_boss;
         private List<Texture2D> m_explosion;
+        private List<Texture2D> m_enemyExplosion;
         private Song m_backgroundMusic;
         private SoundEffect m_shot;
         private SoundEffect enemyHitSound;
@@ -250,6 +254,8 @@ namespace Galaga
 
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, CHARACTER_SIZE, CHARACTER_SIZE);
             destroyedEnemyScores = new List<(int, int, int)>();
+            destroyedEnemyAnimations = new List<DeathAnimation>();
+            deleteDeathAnimations = new List<DeathAnimation>();
             m_lives = 3;
 
             m_selection = 0;
@@ -263,7 +269,7 @@ namespace Galaga
             playerDeathTimer = 0;
             enemiesHit = 0;
             hitRatio= 0;
-            nextShip = 2000;
+            nextShip = 5000;
             gameStartTimer = 5;
             gameOverTimer = 5;
             newGameTimer = 0;
@@ -401,6 +407,15 @@ namespace Galaga
                 contentManager.Load<Texture2D>("Images/explosion3")
 
             };
+
+            m_enemyExplosion = new List<Texture2D>
+            {
+                contentManager.Load<Texture2D>("Images/enemyExplosion0"),
+                contentManager.Load<Texture2D>("Images/enemyExplosion1"),
+                contentManager.Load<Texture2D>("Images/enemyExplosion2"),
+                contentManager.Load<Texture2D>("Images/enemyExplosion3")
+
+            };
             m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
             m_backgroundMusic = contentManager.Load<Song>("Audio/backgroundMusic");
             m_shot = contentManager.Load<SoundEffect>("Audio/shot");
@@ -428,6 +443,14 @@ namespace Galaga
             
         }
 
+        public void drawDeathAnimations()
+        {
+            foreach(DeathAnimation deathAnimation in destroyedEnemyAnimations)
+            {
+                m_spriteBatch.Draw(m_enemyExplosion[deathAnimation.frame], deathAnimation.rectangle, Color.White);
+            }
+
+        }
         public override void render(GameTime gameTime)
         {
             m_spriteBatch.Begin();
@@ -454,7 +477,7 @@ namespace Galaga
 
                         drawEnemies();
                         drawDestroyedEnemyScore();
-
+                        drawDeathAnimations();
 
                         if(moreEnemies > WAVE_SPAWN_RATE)
                         {
@@ -678,6 +701,35 @@ namespace Galaga
 
                         }
 
+                        //Enemy Death Animation
+
+                        for (int i = 0; i < destroyedEnemyAnimations.Count; i++)
+                        {
+                            destroyedEnemyAnimations[i].totalTime -= gameTime.ElapsedGameTime.TotalSeconds;
+                            destroyedEnemyAnimations[i].nextAnimation += gameTime.ElapsedGameTime.TotalSeconds;
+                            if (destroyedEnemyAnimations[i].nextAnimation >= destroyedEnemyAnimations[i].timer)
+                            {
+                                destroyedEnemyAnimations[i].nextAnimation = 0;
+                                destroyedEnemyAnimations[i].frame += 1;
+                                if (destroyedEnemyAnimations[i].frame > 4)
+                                {
+                                    destroyedEnemyAnimations[i].frame = 0;
+                                }
+                            }
+
+                            if (destroyedEnemyAnimations[i].totalTime <= 0)
+                            {
+                                deleteDeathAnimations.Add(destroyedEnemyAnimations[i]);
+                            }
+                        }
+
+                        foreach(DeathAnimation deathAnimation in deleteDeathAnimations)
+                        {
+                            destroyedEnemyAnimations.Remove(deathAnimation);
+                        }
+
+                        deleteDeathAnimations.Clear();
+
 
                         //Check Bullet Collisions
                         checkCollisions();
@@ -843,11 +895,13 @@ namespace Galaga
                 if(enemy.lives <= 0)
                 {
                     deleteEnemies.Add(enemy);
-                    
-                    if(enemy.enemyTexture == m_bee[0] || enemy.enemyTexture == m_bee[1])
+                    destroyedEnemyAnimations.Add(new DeathAnimation(0.6, 0.15, 0, enemy.rectangle.X - CHARACTER_SIZE, enemy.rectangle.Y - CHARACTER_SIZE));
+
+                    if (enemy.enemyTexture == m_bee[0] || enemy.enemyTexture == m_bee[1])
                     {
                         m_score += 50;
                         destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 50));
+                       
                         
                     } else if (enemy.enemyTexture == m_boss[0] || enemy.enemyTexture == m_boss[1])
                     {
@@ -864,7 +918,7 @@ namespace Galaga
             if (m_score > nextShip)
             {
                 m_lives += 1;
-                nextShip += 2000;
+                nextShip += 5000;
             }
         }
 
@@ -895,9 +949,11 @@ namespace Galaga
                 m_spriteBatch.DrawString(
                    m_enemyScoreFont,
                    destroyedEnemyScores[i].Item3.ToString(),
-                   new Vector2((destroyedEnemyScores[i].Item1 - stringSize.X), destroyedEnemyScores[i].Item2 - CHARACTER_SIZE),
+                   new Vector2((destroyedEnemyScores[i].Item1 - stringSize.X), destroyedEnemyScores[i].Item2 - CHARACTER_SIZE * 2),
                    Color.Red);
 
+                
+                
             }
             
             
@@ -1338,6 +1394,7 @@ namespace Galaga
 
         }
 
+      
         public void pauseInput()
         {
             // This is the technique I'm using to ensure one keypress makes one menu navigation move
@@ -1399,6 +1456,7 @@ namespace Galaga
             public double timeAlive = 0;
             public bool shotBullet = false;
             public double realign = 0;
+            
             public Enemy(Texture2D enemyTexture, int lives, Rectangle rectangle, int[,] path, double speed)
             {
                 this.enemyTexture = enemyTexture;
@@ -1410,10 +1468,26 @@ namespace Galaga
                 this.speed = speed;
 
                 Random random = new Random();
-                if(random.NextDouble() < 0.50)
+                if(random.NextDouble() < 0.33)
                 {
                     shotBullet = true;
                 }
+            }
+        }
+
+        class DeathAnimation
+        {
+            public double timer;
+            public int frame;
+            public Rectangle rectangle;
+            public double totalTime;
+            public double nextAnimation = 0;
+            public DeathAnimation(double totalTime, double timer, int frame, int x, int y)
+            {
+                this.timer = timer;
+                this.totalTime = totalTime;
+                this.frame = frame;
+                rectangle = new Rectangle(x, y, CHARACTER_SIZE * 3, CHARACTER_SIZE * 3);
             }
         }
 
