@@ -242,7 +242,7 @@ namespace Galaga
                     enemy.rectangle.X += (int)moveX;
                     enemy.rectangle.Y += (int)moveY;
 
-                    enemy.rotation = computeRotation(enemy.rectangle.X, enemy.rectangle.Y, path[enemy.pathIndex + 1, 0], path[enemy.pathIndex + 1, 1]);
+                    enemy.rotation = computeRotation(enemy.rectangle.X, enemy.rectangle.Y, path[enemy.pathIndex, 0], path[enemy.pathIndex, 1]);
                     
 
                 }
@@ -259,15 +259,21 @@ namespace Galaga
             m_fontMenuSelect = contentManager.Load<SpriteFont>("Fonts/menu-select");
             m_playerTex = contentManager.Load<Texture2D>("Images/Player");
             m_bulletTex = contentManager.Load<Texture2D>("Images/bullet");
-            m_bee = new List<Texture2D>();
-            m_bee.Add(contentManager.Load<Texture2D>("Images/bee"));
-            m_bee.Add(contentManager.Load<Texture2D>("Images/bee2"));
-            m_boss = new List<Texture2D>();
-            m_boss.Add(contentManager.Load<Texture2D>("Images/boss"));
-            m_boss.Add(contentManager.Load<Texture2D>("Images/boss2"));
-            m_butterfly = new List<Texture2D>();
-            m_butterfly.Add(contentManager.Load<Texture2D>("Images/butterfly"));
-            m_butterfly.Add(contentManager.Load<Texture2D>("Images/butterfly2"));
+            m_bee = new List<Texture2D>
+            {
+                contentManager.Load<Texture2D>("Images/bee"),
+                contentManager.Load<Texture2D>("Images/bee2")
+            };
+            m_boss = new List<Texture2D>
+            {
+                contentManager.Load<Texture2D>("Images/boss"),
+                contentManager.Load<Texture2D>("Images/boss2")
+            };
+            m_butterfly = new List<Texture2D>
+            {
+                contentManager.Load<Texture2D>("Images/butterfly"),
+                contentManager.Load<Texture2D>("Images/butterfly2")
+            };
             m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
             m_backgroundMusic = contentManager.Load<Song>("Audio/backgroundMusic");
             m_shot = contentManager.Load<SoundEffect>("Audio/shot");
@@ -754,13 +760,17 @@ namespace Galaga
                     if (enemy.realign <= 0)
                     {
                         enemy.realign = 1.5;
+                        //Player to the Right
                         if (m_player.X > enemy.rectangle.X)
                         {
                             enemy.directionX = -1;
+                            enemy.rotation = 2.35619;
                         }
                         else
+                        //Player to the Left
                         {
                             enemy.directionX = 1;
+                            enemy.rotation = -2.35619;
                         }
                     }
                     
