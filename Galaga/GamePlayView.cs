@@ -45,13 +45,15 @@ namespace Galaga
         private int bulletWidth;
         private float bulletSpeed = 700.0f / 1000.0f;
         private const float SPRITE_MOVE_PIXELS_PER_MS = 600.0f / 1000.0f;
+        public const int WAVE_SPAWN_RATE = 5;
         private double playerDeathTimer;
-
-       
+        private int enemiesHit;
+        private int nextShip;
         private double m_score;
         private double moreEnemies;
         private double clearScores;
         private double switchAnimation;
+        private double hitRatio;
 
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
@@ -154,7 +156,7 @@ namespace Galaga
             {1500, 1000},
             {1350, 800},
             {1050, 500 },
-            {900, 400},
+            {900, 550},
             };
 
             m_player = new Rectangle(m_graphics.PreferredBackBufferWidth / 2, m_graphics.PreferredBackBufferHeight - 100, CHARACTER_SIZE, CHARACTER_SIZE);
@@ -170,6 +172,10 @@ namespace Galaga
             switchAnimation = 0.75;
             deathLocation = (0, 0);
             playerDeathTimer = 0;
+            enemiesHit = 0;
+            hitRatio= 0;
+            nextShip = 2000;
+
             //Bools
             newGame = true;
             m_waitforkey = false;
@@ -394,7 +400,11 @@ namespace Galaga
         }
         public override void update(GameTime gameTime)
         {
-            if(playerDeathTimer <= 0)
+            if(playerDeath)
+            {
+                m_player.X = m_graphics.PreferredBackBufferWidth / 2;
+            }
+            if(playerDeathTimer < 0)
             {
                 m_player.Y = m_graphics.PreferredBackBufferHeight - 100;
                 playerDeath = false;
@@ -524,7 +534,9 @@ namespace Galaga
                             {
                                 enemyHitSound.Play();
                                 deleteBullets.Add(bullet);
+                                enemiesHit += 1;
                                 enemy.lives -= 1;
+                                
                             }
                         }
 
@@ -611,6 +623,7 @@ namespace Galaga
                     {
                         m_score += 50;
                         destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 50));
+                        
                     } else if (enemy.enemyTexture == m_boss[0] || enemy.enemyTexture == m_boss[1])
                     {
                         m_score += 150;
@@ -621,6 +634,12 @@ namespace Galaga
                         destroyedEnemyScores.Add((enemy.rectangle.Right, enemy.rectangle.Top, 80));
                     }
                 }
+            }
+
+            if (m_score > nextShip)
+            {
+                m_lives += 1;
+                nextShip *= 2;
             }
         }
 
@@ -671,10 +690,36 @@ namespace Galaga
 
             stringSize = m_font.MeasureString("Bullets Fired: " + bulletsFired.ToString());
             m_spriteBatch.DrawString(
-               m_font,
+               m_enemyScoreFont,
                 "Bullets Fired: " + (bulletsFired).ToString(),
-               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 100),
+               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 150),
                Color.Yellow);
+
+            stringSize = m_font.MeasureString("Enemies Hit: " + enemiesHit.ToString());
+            m_spriteBatch.DrawString(
+               m_enemyScoreFont,
+                "Enemies Hit: " + (enemiesHit).ToString(),
+               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 200),
+               Color.Yellow);
+
+            if (enemiesHit != 0)
+            {
+                stringSize = m_font.MeasureString("Ratio: " + hitRatio.ToString());
+                m_spriteBatch.DrawString(
+                   m_enemyScoreFont,
+                    "Ratio: " + hitRatio.ToString() + "%",
+                   new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 100),
+                   Color.Yellow);
+            } else
+            {
+                stringSize = m_font.MeasureString("Ratio: 0%");
+                m_spriteBatch.DrawString(
+                   m_enemyScoreFont,
+                    "Ratio: 0%",
+                   new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 100),
+                   Color.Yellow);
+            }
+            
 
         }
 
@@ -709,10 +754,16 @@ namespace Galaga
 
         private void onSpace(GameTime gameTime, float scale)
         {
-            //Fire Bullets 
-            bullets.Add(new Rectangle(m_player.Center.X - bulletWidth/2, m_player.Y - 5, bulletWidth, bulletWidth));
-            bulletsFired += 1;
-            m_shot.Play();
+            if (!playerDeath)
+            {
+                //Fire Bullets 
+                bullets.Add(new Rectangle(m_player.Center.X - bulletWidth / 2, m_player.Y - 5, bulletWidth, bulletWidth));
+                bulletsFired += 1;
+                m_shot.Play();
+                hitRatio = ((double)enemiesHit / (double)bulletsFired) * 100;
+                hitRatio = Math.Round(hitRatio, 2);
+            }
+            
             
         }
 
@@ -904,7 +955,7 @@ namespace Galaga
 
                 if(enemiesCreated == 8)
                 {
-                    moreEnemies = 10;
+                    moreEnemies = WAVE_SPAWN_RATE;
                 }
             } else if(enemiesCreated < 17)
             {
@@ -922,7 +973,7 @@ namespace Galaga
 
                 if (enemiesCreated == 17)
                 {
-                    moreEnemies = 10;
+                    moreEnemies = WAVE_SPAWN_RATE;
                 }
 
             } else if (enemiesCreated < 25)
@@ -931,7 +982,7 @@ namespace Galaga
                 enemies.Add(new Enemy(m_butterfly[0], 1, new Rectangle(bottomRightPath[0, 0], bottomRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), bottomRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 25)
                 {
-                    moreEnemies = 10;
+                    moreEnemies = WAVE_SPAWN_RATE;
                 }
             }
             else if (enemiesCreated < 33)
@@ -940,7 +991,7 @@ namespace Galaga
                 enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topRightPath[0, 0], topRightPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topRightPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 33)
                 {
-                    moreEnemies = 10;
+                    moreEnemies = WAVE_SPAWN_RATE;
                 }
             }
             else if (enemiesCreated < 41)
@@ -949,7 +1000,7 @@ namespace Galaga
                 enemies.Add(new Enemy(m_bee[0], 1, new Rectangle(topLeftPath[0, 0], topLeftPath[0, 1], CHARACTER_SIZE, CHARACTER_SIZE), topLeftPath, SPRITE_MOVE_PIXELS_PER_MS / 1.5));
                 if (enemiesCreated == 41)
                 {
-                    moreEnemies = 10;
+                    moreEnemies = WAVE_SPAWN_RATE;
                 }
             }
             
