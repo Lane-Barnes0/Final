@@ -17,12 +17,7 @@ namespace Galaga
     {
         private SpriteFont m_font;
         private Texture2D m_background;
-<<<<<<< HEAD
-        
-        private bool loading = false;
-=======
 
->>>>>>> 710a2d0c8ae097906dd48b2275ad08b37e4d3da1
         private const string MESSAGE = "These are the high scores";
         private bool loading = false;
         private List<int> highscores;
