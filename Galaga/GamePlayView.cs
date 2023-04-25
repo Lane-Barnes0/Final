@@ -35,6 +35,7 @@ namespace Galaga
         private bool m_waitforkey;
         private int m_selection;
         private bool playerDeath;
+        private bool m_canPlayMusic2;
 
         private (int, int) deathLocation;
         private const int Wall_THICKNESS = 30;
@@ -104,6 +105,7 @@ namespace Galaga
         private List<Texture2D> m_explosion;
         private List<Texture2D> m_enemyExplosion;
         private Song m_backgroundMusic;
+        private Song m_backgroundMusic2;
         private SoundEffect m_shot;
         private SoundEffect enemyHitSound;
         private SoundEffect playerDeathSound;
@@ -313,11 +315,12 @@ namespace Galaga
             enemiesHit = 0;
             hitRatio= 0;
             nextShip = 5000;
-            gameStartTimer = 5;
+            gameStartTimer = 7;
             gameOverTimer = 5;
             newGameTimer = 0;
             explosionAnimation = 0;
             explosionAnimationTimer = 0.25;
+            m_canPlayMusic2 = true;
             //Bools
             newGame = true;
             m_waitforkey = false;
@@ -461,6 +464,7 @@ namespace Galaga
             };
             m_enemyScoreFont = contentManager.Load<SpriteFont>("Fonts/enemyScore");
             m_backgroundMusic = contentManager.Load<Song>("Audio/backgroundMusic");
+            m_backgroundMusic2 = contentManager.Load<Song>("Audio/backgroundMusic2");
             m_shot = contentManager.Load<SoundEffect>("Audio/shot");
             enemyHitSound = contentManager.Load<SoundEffect>("Audio/hit");
             playerDeathSound = contentManager.Load<SoundEffect>("Audio/playerDeath");
@@ -675,7 +679,17 @@ namespace Galaga
             if (m_canPlayMusic)
             {
                 MediaPlayer.Play(m_backgroundMusic);
+                
                 m_canPlayMusic = false;
+
+            }
+
+            if(m_canPlayMusic2 && gameStartTimer <= 0)
+            {
+                
+                m_canPlayMusic2 = false;
+                MediaPlayer.IsRepeating = true;
+                MediaPlayer.Play(m_backgroundMusic2);
             }
 
             if (gameStartTimer <= 0)
