@@ -67,7 +67,9 @@ namespace Galaga
                 // If enter is pressed, return the appropriate new state
                 if (Keyboard.GetState().IsKeyDown(Keys.Enter) && !m_previousKeyboard.IsKeyDown(Keys.Enter) && m_currentSelection == MenuState.NewGame)
                 {
+                   
                     return GameStateEnum.NewGame;
+                    
                 }
                 if (Keyboard.GetState().IsKeyDown(Keys.Enter) && !m_previousKeyboard.IsKeyDown(Keys.Enter) && m_currentSelection == MenuState.HighScores)
                 {

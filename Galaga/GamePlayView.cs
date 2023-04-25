@@ -21,6 +21,7 @@ using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Audio;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Galaga
 {
@@ -30,7 +31,7 @@ namespace Galaga
         private bool saving = false;
         private bool m_wait;
         private bool m_pause;
-        bool newGame;
+        public bool newGame;
         bool m_quit;
         private bool m_waitforkey;
         private int m_selection;
@@ -54,7 +55,9 @@ namespace Galaga
         private double clearScores;
         private double switchAnimation;
         private double hitRatio;
-
+        private double gameStartTimer;
+        private double gameOverTimer;
+        private double newGameTimer;
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
@@ -175,7 +178,9 @@ namespace Galaga
             enemiesHit = 0;
             hitRatio= 0;
             nextShip = 2000;
-
+            gameStartTimer = 5;
+            gameOverTimer = 5;
+            newGameTimer = 0;
             //Bools
             newGame = true;
             m_waitforkey = false;
@@ -185,6 +190,7 @@ namespace Galaga
             playerDeath = false;
             rightWall = new Rectangle(m_graphics.PreferredBackBufferWidth - 500, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
             leftWall = new Rectangle(470, 0, Wall_THICKNESS, m_graphics.PreferredBackBufferHeight);
+
 
         }
         public double computeDistance(int pt1x, int pt1y, int pt2x, int pt2y)
@@ -308,41 +314,110 @@ namespace Galaga
         public override GameStateEnum processInput(GameTime gameTime)
         {
 
-            if (m_quit == true)
+            if (m_quit == true && gameOverTimer <= 0)
             {
+                m_quit = false;
                 newGame = true;
+                m_pause = false;
+                newGameTimer = 0.2;
                 saveScore();
+                MediaPlayer.Stop();
                 return GameStateEnum.MainMenu;
+            } else
+            {
+                return GameStateEnum.NewGame;
             }
 
-            return GameStateEnum.NewGame;
+            
         }
 
         public override void render(GameTime gameTime)
         {
             m_spriteBatch.Begin();
             m_spriteBatch.Draw(m_background, new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight), Color.White);
-            if (!m_quit)
+            if (!m_quit && newGameTimer <= 0)
             {
                 drawLives();
-                if (m_pause)
+                if (gameStartTimer <= 0)
                 {
-                    renderMenu();
-                }
-                else
-                {
-                    if(playerDeath)
+                    
+                    if (m_pause)
                     {
-                        m_spriteBatch.Draw(m_explosion, new Rectangle(deathLocation.Item1, deathLocation.Item2, CHARACTER_SIZE * 2, CHARACTER_SIZE * 2), Color.White);
+                        renderMenu();
                     }
-                    drawScore();
-                    m_spriteBatch.Draw(m_playerTex, m_player, Color.White);
-                    drawBullets();
+                    else
+                    {
+                        if (playerDeath)
+                        {
+                            m_spriteBatch.Draw(m_explosion, new Rectangle(deathLocation.Item1, deathLocation.Item2, CHARACTER_SIZE * 2, CHARACTER_SIZE * 2), Color.White);
+                        }
+                        drawScore();
+                        m_spriteBatch.Draw(m_playerTex, m_player, Color.White);
+                        drawBullets();
 
-                    drawEnemies();
-                    drawDestroyedEnemyScore();
+                        drawEnemies();
+                        drawDestroyedEnemyScore();
+
+                    }
+
+
+                } else
+                {
+                    Vector2 stringSize = m_font.MeasureString("Player One ");
+                    m_spriteBatch.DrawString(
+                       m_font,
+                        "Player One: ",
+                       new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 100),
+                       Color.Teal);
+
+                   stringSize = m_font.MeasureString("New Ship After Every " + nextShip.ToString() + " Points");
+                    m_spriteBatch.DrawString(
+                       m_font,
+                        "New Ship After Every " + nextShip.ToString() + " Points",
+                       new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 50),
+                       Color.Teal);
+                }
+                
+            } else
+            {
+                if(gameOverTimer > 0 )
+                {
+                    drawScore();
+                    Vector2 stringSize = m_font.MeasureString("Bullets Fired: " + bulletsFired.ToString());
+                    m_spriteBatch.DrawString(
+                       m_enemyScoreFont,
+                        "Bullets Fired: " + (bulletsFired).ToString(),
+                       new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 150),
+                       Color.Yellow);
+
+                    stringSize = m_font.MeasureString("Enemies Hit: " + enemiesHit.ToString());
+                    m_spriteBatch.DrawString(
+                       m_enemyScoreFont,
+                        "Enemies Hit: " + (enemiesHit).ToString(),
+                       new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 200),
+                       Color.Yellow);
+
+                    if (enemiesHit != 0)
+                    {
+                        stringSize = m_font.MeasureString("Ratio: " + hitRatio.ToString());
+                        m_spriteBatch.DrawString(
+                           m_enemyScoreFont,
+                            "Ratio: " + hitRatio.ToString() + "%",
+                           new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 100),
+                           Color.Yellow);
+                    }
+                    else
+                    {
+                        stringSize = m_font.MeasureString("Ratio: 0%");
+                        m_spriteBatch.DrawString(
+                           m_enemyScoreFont,
+                            "Ratio: 0%",
+                           new Vector2((m_graphics.PreferredBackBufferWidth - stringSize.X) / 2, m_graphics.PreferredBackBufferHeight / 2 - 100),
+                           Color.Yellow);
+                    }
 
                 }
+                
             }
             m_spriteBatch.End();
         }
@@ -400,122 +475,141 @@ namespace Galaga
         }
         public override void update(GameTime gameTime)
         {
-            if(playerDeath)
+            
+            
+            if (newGame && newGameTimer <= 0.05)
             {
-                m_player.X = m_graphics.PreferredBackBufferWidth / 2;
-            }
-            if(playerDeathTimer < 0)
-            {
-                m_player.Y = m_graphics.PreferredBackBufferHeight - 100;
-                playerDeath = false;
+                initializeNewGameState();
+                newGame = false;
             } else
             {
-                playerDeathTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+                newGameTimer -= gameTime.ElapsedGameTime.TotalSeconds;
             }
+
+
             if (m_canPlayMusic)
             {
                 MediaPlayer.Play(m_backgroundMusic);
                 m_canPlayMusic = false;
             }
 
+            if (gameStartTimer <= 0)
+            {
 
-            if (newGame)
-            {
-                initializeNewGameState();
-                newGame = false;
-            }
-            
-            if (!m_pause)
-            {
+
+                if (playerDeath)
+                {
+                    m_player.X = m_graphics.PreferredBackBufferWidth / 2;
+                }
+                if (playerDeathTimer < 0)
+                {
+                    m_player.Y = m_graphics.PreferredBackBufferHeight - 100;
+                    playerDeath = false;
+                }
+                else
+                {
+                    playerDeathTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+                }
+                
+                if (!m_pause)
+                {
                     if (!m_quit)
                     {
 
-                    switchAnimation -= gameTime.ElapsedGameTime.TotalSeconds;
+                        switchAnimation -= gameTime.ElapsedGameTime.TotalSeconds;
 
-                    switchEnemyAnimation();
-                    
-                    m_inputKeyboard.Update(gameTime);
-                    
-                    generateEnemies(currentWave, gameTime);
-                        
+                        switchEnemyAnimation();
 
-                    //Update Enemies
-                    updateEnemies(gameTime);
-                    updateEnemyBullets(gameTime);
+                        m_inputKeyboard.Update(gameTime);
 
-                    //Update Each bullet Position
-                    for (int i = 0; i < bullets.Count; i ++)
-                    {
-                        int moveDistance = (int)(gameTime.ElapsedGameTime.TotalMilliseconds * bulletSpeed);
-                        bullets[i] = new Rectangle(bullets[i].X, bullets[i].Y - moveDistance, bulletWidth, bulletWidth);
-                    }
+                        generateEnemies(currentWave, gameTime);
 
-                    //Delete Any bullets off Screen
-                    
-                    for (int i = 0; i < bullets.Count; i++)
-                    {
-                        if (bullets[i].Y < 0)
+
+                        //Update Enemies
+                        updateEnemies(gameTime);
+                        updateEnemyBullets(gameTime);
+
+                        //Update Each bullet Position
+                        for (int i = 0; i < bullets.Count; i++)
                         {
-                            deleteBullets.Add(bullets[i]);
-                        }
-                        
-                    }
-                    
-
-                    //Check Bullet Collisions
-                    checkCollisions();
-                    checkEnemyLives();
-
-                    //Clean Up Dead Enemies and Off screen Bullets
-
-                    if(deleteBullets.Count > 0)
-                    {
-                        foreach (Rectangle bullet in deleteBullets)
-                        {
-                            bullets.Remove(bullet);
+                            int moveDistance = (int)(gameTime.ElapsedGameTime.TotalMilliseconds * bulletSpeed);
+                            bullets[i] = new Rectangle(bullets[i].X, bullets[i].Y - moveDistance, bulletWidth, bulletWidth);
                         }
 
-                        deleteBullets.Clear();
-                    }
+                        //Delete Any bullets off Screen
 
-                    if (deleteEnemyBullets.Count > 0)
-                    {
-                        foreach (Rectangle bullet in deleteEnemyBullets)
+                        for (int i = 0; i < bullets.Count; i++)
                         {
-                            enemyBullets.Remove(bullet);
+                            if (bullets[i].Y < 0)
+                            {
+                                deleteBullets.Add(bullets[i]);
+                            }
+
                         }
 
-                        deleteEnemyBullets.Clear();
-                    }
 
-                    if (deleteEnemies.Count > 0 )
-                    {
-                        foreach (Enemy enemy in deleteEnemies)
+                        //Check Bullet Collisions
+                        checkCollisions();
+                        checkEnemyLives();
+
+                        //Clean Up Dead Enemies and Off screen Bullets
+
+                        if (deleteBullets.Count > 0)
                         {
-                            enemies.Remove(enemy);
+                            foreach (Rectangle bullet in deleteBullets)
+                            {
+                                bullets.Remove(bullet);
+                            }
+
+                            deleteBullets.Clear();
                         }
 
-                        deleteEnemies.Clear();
-                    }
+                        if (deleteEnemyBullets.Count > 0)
+                        {
+                            foreach (Rectangle bullet in deleteEnemyBullets)
+                            {
+                                enemyBullets.Remove(bullet);
+                            }
 
-                    //Clean Up Scores
-                    if(destroyedEnemyScores.Count > 0)
-                    {
-                    clearScores -= gameTime.ElapsedGameTime.TotalSeconds;
-                    if (clearScores < 0) { clearScores = 0.25; destroyedEnemyScores.Clear(); }
-                    }
-                    
+                            deleteEnemyBullets.Clear();
+                        }
 
-                } else
+                        if (deleteEnemies.Count > 0)
+                        {
+                            foreach (Enemy enemy in deleteEnemies)
+                            {
+                                enemies.Remove(enemy);
+                            }
+
+                            deleteEnemies.Clear();
+                        }
+
+                        //Clean Up Scores
+                        if (destroyedEnemyScores.Count > 0)
+                        {
+                            clearScores -= gameTime.ElapsedGameTime.TotalSeconds;
+                            if (clearScores < 0) { clearScores = 0.25; destroyedEnemyScores.Clear(); }
+                        }
+
+
+                    }
+                    else
                     {
                         //Death
-                        
+                        gameOverTimer -= gameTime.ElapsedGameTime.TotalSeconds;
                     }
                 }
-            else
+                else
+                {
+                    pauseInput();
+                }
+
+            } else
             {
-                pauseInput();
+                gameStartTimer -= gameTime.ElapsedGameTime.TotalSeconds;
             }
+
+            
         }
 
         private void checkCollisions()
@@ -688,37 +782,7 @@ namespace Galaga
                Color.Red);
 
 
-            stringSize = m_font.MeasureString("Bullets Fired: " + bulletsFired.ToString());
-            m_spriteBatch.DrawString(
-               m_enemyScoreFont,
-                "Bullets Fired: " + (bulletsFired).ToString(),
-               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 150),
-               Color.Yellow);
-
-            stringSize = m_font.MeasureString("Enemies Hit: " + enemiesHit.ToString());
-            m_spriteBatch.DrawString(
-               m_enemyScoreFont,
-                "Enemies Hit: " + (enemiesHit).ToString(),
-               new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 200),
-               Color.Yellow);
-
-            if (enemiesHit != 0)
-            {
-                stringSize = m_font.MeasureString("Ratio: " + hitRatio.ToString());
-                m_spriteBatch.DrawString(
-                   m_enemyScoreFont,
-                    "Ratio: " + hitRatio.ToString() + "%",
-                   new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 100),
-                   Color.Yellow);
-            } else
-            {
-                stringSize = m_font.MeasureString("Ratio: 0%");
-                m_spriteBatch.DrawString(
-                   m_enemyScoreFont,
-                    "Ratio: 0%",
-                   new Vector2(m_graphics.PreferredBackBufferWidth - stringSize.X, m_graphics.PreferredBackBufferHeight - 100),
-                   Color.Yellow);
-            }
+            
             
 
         }
@@ -1065,6 +1129,7 @@ namespace Galaga
                 else if (Keyboard.GetState().IsKeyDown(Keys.Enter) && m_selection == 1)
                 {
                     m_quit = true;
+                    gameOverTimer = 0;
                     m_waitforkey = true;
                 }
             }

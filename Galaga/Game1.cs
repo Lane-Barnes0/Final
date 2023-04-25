@@ -94,6 +94,7 @@ namespace Galaga
                 Exit();
             }
 
+          
             m_currentState.update(gameTime);
         }
     }
