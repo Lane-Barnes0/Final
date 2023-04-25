@@ -18,15 +18,16 @@ namespace Galaga
         private SpriteFont m_font;
         private Texture2D m_background;
 
-        private bool loading = false;
         private const string MESSAGE = "These are the high scores";
+        private bool loading = false;
+        private List<int> highscores;
 
         public override void loadContent(ContentManager contentManager)
         {
             m_font = contentManager.Load<SpriteFont>("Fonts/menu");
             m_background = contentManager.Load<Texture2D>("Images/background");
-
-
+            loadSomething();
+            highscores = new List<int>();
         }
 
         public override GameStateEnum processInput(GameTime gameTime)
@@ -42,20 +43,22 @@ namespace Galaga
         public override void render(GameTime gameTime)
         {
             m_spriteBatch.Begin();
-            m_spriteBatch.Draw(m_background, new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight), Color.White);
 
-            if (m_loadedState != null)
+            m_spriteBatch.DrawString(m_font, "HIGH SCORES", new Vector2(700, 110), Color.Yellow);
+
+            if (highscores.Count > 0)
             {
-                Vector2 lineStart = Vector2.Zero;
-                m_spriteBatch.DrawString(this.m_font, "High Score: " + m_loadedState.Score, lineStart, Color.Yellow);
-                lineStart.Y += this.m_font.MeasureString("High Score: " + m_loadedState.Score).Y;
-               
+                for (int i = 0; i < (highscores.Count > 4 ? 5 : highscores.Count); i++)
+                {
+                    m_spriteBatch.DrawString(m_font, highscores[i].ToString(), new Vector2(700, 210 + (i * 75)), Color.Yellow);
+                }
+
 
             }
 
             m_spriteBatch.End();
-      
-    }
+
+        }
 
         public override void update(GameTime gameTime)
         {
