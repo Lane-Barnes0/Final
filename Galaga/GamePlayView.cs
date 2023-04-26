@@ -59,6 +59,7 @@ namespace Galaga
         private double gameOverTimer;
         private double newGameTimer;
         private double explosionAnimationTimer;
+        private double fireRate;
         private SpriteFont m_font;
         private SpriteFont m_fontMenu;
         private SpriteFont m_fontMenuSelect;
@@ -303,6 +304,7 @@ namespace Galaga
             deleteDeathAnimations = new List<DeathAnimation>();
             m_lives = 3;
 
+            fireRate = 0.2;
             m_selection = 0;
             m_score = 0;
             moreEnemies = 1;
@@ -695,6 +697,7 @@ namespace Galaga
             if (gameStartTimer <= 0)
             {
 
+                fireRate -= gameTime.ElapsedGameTime.TotalSeconds;
 
                 if (playerDeath)
                 {
@@ -1063,11 +1066,16 @@ namespace Galaga
             if (!playerDeath)
             {
                 //Fire Bullets 
-                bullets.Add(new Rectangle(m_player.Center.X - bulletWidth / 2, m_player.Y - 5, bulletWidth, bulletWidth));
-                bulletsFired += 1;
-                m_shot.Play();
-                hitRatio = ((double)enemiesHit / (double)bulletsFired) * 100;
-                hitRatio = Math.Round(hitRatio, 2);
+                if(fireRate <= 0 )
+                {
+                    bullets.Add(new Rectangle(m_player.Center.X - bulletWidth / 2, m_player.Y - 5, bulletWidth, bulletWidth));
+                    bulletsFired += 1;
+                    m_shot.Play();
+                    hitRatio = ((double)enemiesHit / (double)bulletsFired) * 100;
+                    hitRatio = Math.Round(hitRatio, 2);
+                    fireRate = 0.25;
+                }
+                
             }
             
             
@@ -1168,23 +1176,25 @@ namespace Galaga
                     enemy.realign -= gameTime.ElapsedGameTime.TotalSeconds;
                     enemy.speed = SPRITE_MOVE_PIXELS_PER_MS / 5;
                     //Change X direction Towards Player every 1.5 seconds
+
+
                     if (enemy.realign <= 0)
                     {
-                        enemy.realign = 1.5;
+                        enemy.realign = 1;
+
                         //Player to the Right
                         if (m_player.X > enemy.rectangle.X)
                         {
                             enemy.directionX = -1;
                             enemy.rotation = 2.35619;
-                        }
-                        else
+                        } else if (m_player.X < enemy.rectangle.X)
                         //Player to the Left
                         {
                             enemy.directionX = 1;
                             enemy.rotation = -2.35619;
                         }
                     }
-                    
+
                     double distTraveledX = enemy.directionX * enemy.speed * gameTime.ElapsedGameTime.TotalMilliseconds;
                     double distTraveledY = enemy.speed * gameTime.ElapsedGameTime.TotalMilliseconds;
                     enemy.rectangle = new Rectangle((int)(enemy.rectangle.X - distTraveledX * 2), (int)(enemy.rectangle.Y + distTraveledY), CHARACTER_SIZE, CHARACTER_SIZE);
