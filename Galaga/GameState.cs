@@ -30,3 +30,4 @@ namespace Galaga
         public DateTime TimeStamp { get; set; }
     }
 }
+   
