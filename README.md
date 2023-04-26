@@ -4,6 +4,5 @@ Final project for Technical Game Development. A clone of Galaga built in C# usin
 
 To Run:
 
-1. Clone the project
-2. Open Galaga.sln using Microsoft Visual Studio 2022
-3. Click play 
+1. Download Game Folder
+2. Run Galaga.exe
