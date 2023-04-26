@@ -4,5 +4,6 @@ Final project for Technical Game Development. A clone of Galaga built in C# usin
 
 To Run:
 
-1. Download Game Folder
-2. Run Galaga.exe
+1. Download Repository
+2. Open Game Folder
+3. Run Galaga.exe
