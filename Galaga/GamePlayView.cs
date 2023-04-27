@@ -698,7 +698,7 @@ namespace Galaga
             }
             else
             {
-                m_inputKeyboard.registerCommand(Keys.A, false, new InputDeviceHelper.CommandDelegate(onMoveLeft));
+                m_inputKeyboard.registerCommand(Keys.Left, false, new InputDeviceHelper.CommandDelegate(onMoveLeft));
                 m_inputKeyboard.registerCommand(Keys.Right, false, new InputDeviceHelper.CommandDelegate(onMoveRight));
                 m_inputKeyboard.registerCommand(Keys.Escape, false, new InputDeviceHelper.CommandDelegate(onEscape));
                 m_inputKeyboard.registerCommand(Keys.Space, true, new InputDeviceHelper.CommandDelegate(onSpace));

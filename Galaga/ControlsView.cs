@@ -161,6 +161,11 @@ namespace Galaga
                     m_keys = m_loadedState.keyBinds;
                 }
                 
+            } else
+            {
+                saveInput();
+                loadSomething();
+
             }
 
             if(startTimer <= 0 )
@@ -169,7 +174,11 @@ namespace Galaga
                 {
                     if (Keyboard.GetState().GetPressedKeys().Length > 0)
                     {
-                        m_loadedState.keyBinds[0] = Keyboard.GetState().GetPressedKeys()[0];
+                        if(m_loadedState != null)
+                        {
+                            m_loadedState.keyBinds[0] = Keyboard.GetState().GetPressedKeys()[0];
+                        }
+                       
                         makingSelection = false;
                     }
 
@@ -178,7 +187,10 @@ namespace Galaga
                 {
                     if (Keyboard.GetState().GetPressedKeys().Length > 0)
                     {
-                        m_loadedState.keyBinds[1] = Keyboard.GetState().GetPressedKeys()[0];
+                        if (m_loadedState != null)
+                        {
+                            m_loadedState.keyBinds[1] = Keyboard.GetState().GetPressedKeys()[0];
+                        }
                         makingSelection = false;
                     }
 
@@ -187,7 +199,10 @@ namespace Galaga
                 {
                     if (Keyboard.GetState().GetPressedKeys().Length > 0)
                     {
-                        m_loadedState.keyBinds[2] = Keyboard.GetState().GetPressedKeys()[0];
+                        if (m_loadedState != null)
+                        {
+                            m_loadedState.keyBinds[2] = Keyboard.GetState().GetPressedKeys()[0];
+                        }
                         makingSelection = false;
                     }
 
