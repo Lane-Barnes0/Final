@@ -68,13 +68,14 @@ namespace Galaga
 
             if (m_loadedState != null)
             {
-                if (!highscores.Contains((int)m_loadedState.Score))
+                if(highscores.Count < m_loadedState.Score.Count)
                 {
-                    highscores.Add((int)m_loadedState.Score);
+                    highscores = m_loadedState.Score;
+                    highscores.Sort();
+                    highscores.Reverse();
                 }
 
-                highscores.Sort();
-                highscores.Reverse();
+                
             }
         }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Galaga
 {
@@ -18,15 +19,15 @@ namespace Galaga
         /// Overloaded constructor used to create an object for long term storage
         /// </summary>
         /// <param name="score"></param>
-        public GameState(uint score)
+        public GameState(List<int> scores)
         {
             this.Name = "Default Player";
-            this.Score = score;
+            this.Score = scores;
             this.TimeStamp = DateTime.Now;
         }
 
         public string Name { get; set; }
-        public uint Score { get; set; }
+        public List<int> Score { get; set; }
         public DateTime TimeStamp { get; set; }
     }
 }

@@ -29,6 +29,8 @@ namespace Galaga
     {
         
         private bool saving = false;
+        private bool loading = false;
+        private bool loadingInput = false;
         private bool m_pause;
         public bool newGame;
         bool m_quit;
@@ -50,7 +52,7 @@ namespace Galaga
         private double playerDeathTimer;
         private int enemiesHit;
         private int nextShip;
-        private double m_score;
+        private int m_score;
         private double moreEnemies;
         private double clearScores;
         private double switchAnimation;
@@ -66,8 +68,8 @@ namespace Galaga
         private SpriteFont m_enemyScoreFont;
         private bool m_canPlayMusic;
         private int explosionAnimation;
-        
-        
+        private List<int> m_scores;
+        private List<Keys> m_keys;
         private List<Rectangle> bullets;
         private List<Rectangle> deleteBullets;
         private List<Rectangle> enemyBullets;
@@ -121,11 +123,12 @@ namespace Galaga
                     this.saving = true;
                     //
                     // Create something to save
-                    GameState myState = new GameState((uint) m_score);
+                    GameState myState = new GameState(m_scores);
                     finalizeSaveAsync(myState);
                 }
             }
         }
+
 
         private async void finalizeSaveAsync(GameState state)
         {
@@ -164,11 +167,14 @@ namespace Galaga
         public void initializeNewGameState()
         {
             //Setup Input
+            
             m_inputKeyboard = new KeyboardInput();
-            m_inputKeyboard.registerCommand(Keys.Left, false, new InputDeviceHelper.CommandDelegate(onMoveLeft));
-            m_inputKeyboard.registerCommand(Keys.Right, false, new InputDeviceHelper.CommandDelegate(onMoveRight));
-            m_inputKeyboard.registerCommand(Keys.Escape, false, new InputDeviceHelper.CommandDelegate(onEscape));
-            m_inputKeyboard.registerCommand(Keys.Space, true, new InputDeviceHelper.CommandDelegate(onSpace));
+
+            
+            
+                
+            
+            
 
             //Bullets, Enemies, Player
             bullets = new List<Rectangle>();
@@ -419,10 +425,24 @@ namespace Galaga
                 }
             }
         }
+
+        private void loadScores()
+        {
+
+            if(m_loadedState != null)
+            {
+                m_scores = m_loadedState.Score;
+            } else
+            {
+                m_scores = new List<int>();
+            }
+            
+         
+        }
         public override void loadContent(ContentManager contentManager)
         {
             initializeNewGameState();
-           
+            
             m_background = contentManager.Load<Texture2D>("Images/background");
             m_font = contentManager.Load<SpriteFont>("Fonts/menu");
             m_squareTexture = contentManager.Load<Texture2D>("Images/square");
@@ -481,6 +501,7 @@ namespace Galaga
                 newGame = true;
                 m_pause = false;
                 newGameTimer = 0.2;
+                m_scores.Add(m_score);
                 saveScore();
                 MediaPlayer.Stop();
                 return GameStateEnum.MainMenu;
@@ -664,10 +685,38 @@ namespace Galaga
 
             }
         }
+
+        private void setupInput()
+        {
+            if (m_loadedInputState != null)
+            {
+                m_keys = m_loadedInputState.keyBinds;
+                m_inputKeyboard.registerCommand(m_keys[1], false, new InputDeviceHelper.CommandDelegate(onMoveLeft));
+                m_inputKeyboard.registerCommand(m_keys[2], false, new InputDeviceHelper.CommandDelegate(onMoveRight));
+                m_inputKeyboard.registerCommand(Keys.Escape, false, new InputDeviceHelper.CommandDelegate(onEscape));
+                m_inputKeyboard.registerCommand(m_keys[0], true, new InputDeviceHelper.CommandDelegate(onSpace));
+            }
+            else
+            {
+                m_inputKeyboard.registerCommand(Keys.A, false, new InputDeviceHelper.CommandDelegate(onMoveLeft));
+                m_inputKeyboard.registerCommand(Keys.Right, false, new InputDeviceHelper.CommandDelegate(onMoveRight));
+                m_inputKeyboard.registerCommand(Keys.Escape, false, new InputDeviceHelper.CommandDelegate(onEscape));
+                m_inputKeyboard.registerCommand(Keys.Space, true, new InputDeviceHelper.CommandDelegate(onSpace));
+            }
+
+        }
         public override void update(GameTime gameTime)
         {
+           
+            loadInput();
+            loadSomething();
+            loadScores();
+            setupInput();
             
             
+
+
+
             if (newGame && newGameTimer <= 0.05)
             {
                 initializeNewGameState();
@@ -1556,7 +1605,95 @@ namespace Galaga
             }
         }
 
-        
+        private void loadSomething()
+        {
+            lock (this)
+            {
+                if (!this.loading)
+                {
+                    this.loading = true;
+                    finalizeLoadAsync();
+                }
+            }
+        }
 
+        private GameState m_loadedState = null;
+
+        private async void finalizeLoadAsync()
+        {
+            await Task.Run(() =>
+            {
+                using (IsolatedStorageFile storage = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    try
+                    {
+                        if (storage.FileExists("HighScores.xml"))
+                        {
+                            using (IsolatedStorageFileStream fs = storage.OpenFile("HighScores.xml", FileMode.Open))
+                            {
+                                if (fs != null)
+                                {
+                                    XmlSerializer mySerializer = new XmlSerializer(typeof(GameState));
+                                    m_loadedState = (GameState)mySerializer.Deserialize(fs);
+                                }
+                            }
+                        }
+                    }
+                    catch (IsolatedStorageException)
+                    {
+                        // Ideally show something to the user, but this is demo code :)
+                    }
+                }
+
+                //this.loading = false;
+            });
+
+        }
+
+        private void loadInput()
+        {
+            lock (this)
+            {
+                if (!this.loadingInput)
+                {
+                    this.loadingInput = true;
+                    finalizeLoadInputAsync();
+                }
+            }
+        }
+
+        private UserInput m_loadedInputState = null;
+
+        private async void finalizeLoadInputAsync()
+        {
+            await Task.Run(() =>
+            {
+                using (IsolatedStorageFile storage = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    try
+                    {
+                        if (storage.FileExists("UserInputs.xml"))
+                        {
+                            using (IsolatedStorageFileStream fs = storage.OpenFile("UserInputs.xml", FileMode.Open))
+                            {
+                                if (fs != null)
+                                {
+                                    XmlSerializer mySerializer = new XmlSerializer(typeof(UserInput));
+                                    m_loadedInputState = (UserInput)mySerializer.Deserialize(fs);
+                                }
+                            }
+                        }
+                    }
+                    catch (IsolatedStorageException)
+                    {
+                        // Ideally show something to the user, but this is demo code :)
+                    }
+                }
+
+                //this.loadingInput = false;
+            });
+        }
     }
+
+
 }
