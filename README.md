@@ -7,7 +7,6 @@ To Run:
 1. Download Repository
 2. Open Game Folder
 3. Run Galaga.exe
-4. Use the Arrow keys to navigate and Space to Fire.
 
 To Modify:
 
